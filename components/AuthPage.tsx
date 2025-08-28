@@ -2,41 +2,28 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Linkedin } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AuthPage() {
   const [loading, setLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLinkedInLogin = async () => {
     setLoading(true)
 
     try {
-      if (isSignUp) {
-        // Sign up
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (error) throw error
-        toast.success('Account created! Please check your email to verify your account.')
-      } else {
-        // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        toast.success('Logged in successfully!')
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      })
+      
+      if (error) throw error
+      
+      toast.success('Redirecting to LinkedIn...')
     } catch (error: any) {
-      toast.error(error.message || `Failed to ${isSignUp ? 'sign up' : 'sign in'}`)
-    } finally {
+      toast.error(error.message || 'Failed to connect with LinkedIn')
       setLoading(false)
     }
   }
@@ -53,66 +40,54 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your email"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
+        <div className="space-y-6">
+          {/* LinkedIn Login Button */}
           <button
-            type="submit"
+            onClick={handleLinkedInLogin}
             disabled={loading}
-            className="w-full bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 text-white font-medium py-4 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
           >
-            {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+            <Linkedin className="w-6 h-6" />
+            {loading ? 'Connecting...' : 'Continue with LinkedIn'}
           </button>
-        </form>
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-          </button>
+          {/* Info Section */}
+          <div className="text-center">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-900 mb-2">
+                🔐 Secure Authentication
+              </h3>
+              <p className="text-xs text-blue-700">
+                We use LinkedIn's official OAuth to securely authenticate your account. 
+                No passwords required - just your LinkedIn credentials.
+              </p>
+            </div>
+          </div>
+
+          {/* Features Preview */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-900 text-center">
+              What you'll get:
+            </h3>
+            <div className="grid grid-cols-1 gap-2 text-xs text-gray-600">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>AI-powered post generation</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Schedule posts for optimal timing</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Direct publishing to LinkedIn</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Track your posting streak</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-8 text-center text-sm text-gray-500">
