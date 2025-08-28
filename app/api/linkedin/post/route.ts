@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare the LinkedIn post
-    const linkedInPost = {
+    const linkedInPost: any = {
       author: `urn:li:person:${profile.linkedin_id}`,
       lifecycleState: 'PUBLISHED',
       specificContent: {
