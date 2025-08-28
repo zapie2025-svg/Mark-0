@@ -41,15 +41,21 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         body: JSON.stringify({ topic, tone }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate post')
+        throw new Error(data.error || 'Failed to generate post')
       }
 
-      const data = await response.json()
       setGeneratedPost(data.content)
-      toast.success('Post generated successfully!')
+      
+      if (data.note) {
+        toast.success(`Post generated successfully! (${data.note})`)
+      } else {
+        toast.success('Post generated successfully!')
+      }
     } catch (error: any) {
+      console.error('Generate post error:', error)
       toast.error(error.message || 'Failed to generate post')
     } finally {
       setLoading(false)

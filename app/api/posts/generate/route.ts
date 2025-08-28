@@ -60,17 +60,41 @@ LinkedIn Post:`
   } catch (error: any) {
     console.error('Error generating post:', error)
     
-    // Fallback to mock response if API fails
-    if (error.message?.includes('API key')) {
+    // Check for specific error types
+    if (error.message?.includes('API key') || !process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables.' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json(
-      { error: 'Failed to generate post. Please try again.' },
-      { status: 500 }
-    )
+    if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
+      return NextResponse.json(
+        { error: 'OpenAI API rate limit exceeded. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
+    // Fallback to mock response for other errors
+    const mockPost = `🚀 Exciting insights on ${topic}!
+
+As we navigate the ever-evolving landscape of ${topic}, it's crucial to stay ahead of the curve. The ${tone} approach to this topic reveals fascinating opportunities for growth and innovation.
+
+Key takeaways:
+• Understanding the fundamentals
+• Leveraging best practices
+• Embracing new possibilities
+
+What's your perspective on ${topic}? I'd love to hear your thoughts in the comments below!
+
+#${topic.replace(/\s+/g, '')} #Innovation #Growth #ProfessionalDevelopment`
+
+    return NextResponse.json({
+      content: mockPost,
+      topic,
+      tone,
+      generated_at: new Date().toISOString(),
+      note: 'Generated using fallback due to API error'
+    })
   }
 }
