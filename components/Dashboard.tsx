@@ -8,7 +8,7 @@ import ScheduleTab from './ScheduleTab'
 import PublishTab from './PublishTab'
 import DraftTab from './DraftTab'
 import LinkedInAnalyticsCard from './LinkedInAnalyticsCard'
-
+import Logo from './Logo'
 
 import toast from 'react-hot-toast'
 
@@ -108,9 +108,7 @@ export default function Dashboard({ user }: DashboardProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                LinkedIn Post Automation
-              </h1>
+              <Logo size="md" />
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">

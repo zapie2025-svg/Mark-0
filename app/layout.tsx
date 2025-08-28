@@ -7,7 +7,7 @@ import StagingBanner from '@/components/StagingBanner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LinkedIn Post Automation',
+  title: 'Mark.0 by Zapie',
   description: 'Create, schedule, and publish LinkedIn posts with AI assistance',
 }
 

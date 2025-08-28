@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sparkles, Save, Calendar, Send, CheckCircle, Clock, Plus, LogOut, FileText, BarChart3, TrendingUp, Users, Eye, Flame } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Logo from './Logo'
 
 interface DraftPost {
   id: string
@@ -262,7 +263,9 @@ What's your experience with ${topic.toLowerCase()}? I'd love to hear your though
       {/* Demo Banner */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 text-center">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold mb-2">🚀 LinkedIn Post Automation Dashboard</h1>
+          <div className="flex justify-center mb-2">
+            <Logo size="lg" className="text-white" />
+          </div>
           <p className="text-blue-100">
             <strong>Demo Mode:</strong> This is a fully functional demo with mock data. 
             Set up Supabase credentials in .env.local for real functionality.
@@ -275,9 +278,7 @@ What's your experience with ${topic.toLowerCase()}? I'd love to hear your though
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Demo Dashboard
-              </h1>
+              <Logo size="md" />
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">
