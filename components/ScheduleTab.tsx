@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, Save, Send } from 'lucide-react'
+import { Calendar, Clock, Save, Send, Linkedin } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -133,6 +133,43 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
     }
   }
 
+  const postToLinkedIn = async (postId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error('Not authenticated')
+        return
+      }
+
+      // Check if LinkedIn is connected
+      if (!session.user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first from the Dashboard')
+        return
+      }
+
+      const response = await fetch('/api/linkedin/post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ postId, includeMedia: false })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success('Post published to LinkedIn successfully!')
+        fetchPosts()
+        onPostUpdated?.()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to post to LinkedIn')
+      }
+    } catch (error) {
+      toast.error('Failed to post to LinkedIn')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -242,6 +279,13 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
                   >
                     <Send className="w-4 h-4" />
                     Ready to Post
+                  </button>
+                  <button
+                    onClick={() => postToLinkedIn(post.id)}
+                    className="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 text-sm"
+                  >
+                    <Linkedin className="w-4 h-4" />
+                    Post to LinkedIn
                   </button>
                 </div>
               </div>

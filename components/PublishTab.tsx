@@ -140,6 +140,43 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
     }
   }
 
+  const postToLinkedIn = async (postId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error('Not authenticated')
+        return
+      }
+
+      // Check if LinkedIn is connected
+      if (!session.user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first from the Dashboard')
+        return
+      }
+
+      const response = await fetch('/api/linkedin/post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ postId, includeMedia: false })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success('Post published to LinkedIn successfully!')
+        fetchPosts()
+        onPostUpdated?.()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to post to LinkedIn')
+      }
+    } catch (error) {
+      toast.error('Failed to post to LinkedIn')
+    }
+  }
+
   const isPostReadyToPublish = (post: Post) => {
     if (!post.schedule_time) return false
     const scheduleTime = new Date(post.schedule_time)
@@ -191,14 +228,23 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
                         {post.content}
                       </div>
                     </div>
-                    <button
-                      onClick={() => publishPost(post.id)}
-                      disabled={publishing === post.id}
-                      className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 ml-4"
-                    >
-                      <Send className="w-4 h-4" />
-                      {publishing === post.id ? 'Publishing...' : 'Publish Now'}
-                    </button>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => publishPost(post.id)}
+                        disabled={publishing === post.id}
+                        className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50"
+                      >
+                        <Send className="w-4 h-4" />
+                        {publishing === post.id ? 'Publishing...' : 'Publish Now'}
+                      </button>
+                      <button
+                        onClick={() => postToLinkedIn(post.id)}
+                        className="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 text-sm"
+                      >
+                        <Linkedin className="w-4 h-4" />
+                        Post to LinkedIn
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
