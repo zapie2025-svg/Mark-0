@@ -48,12 +48,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
       }
 
       setGeneratedPost(data.content)
-      
-      if (data.note) {
-        toast.success(`Post generated successfully! (${data.note})`)
-      } else {
-        toast.success('Post generated successfully!')
-      }
+      toast.success('Post generated successfully!')
     } catch (error: any) {
       console.error('Generate post error:', error)
       toast.error(error.message || 'Failed to generate post')
