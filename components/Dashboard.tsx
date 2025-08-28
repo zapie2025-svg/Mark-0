@@ -8,6 +8,7 @@ import ScheduleTab from './ScheduleTab'
 import PublishTab from './PublishTab'
 import DraftTab from './DraftTab'
 import LinkedInAnalyticsCard from './LinkedInAnalyticsCard'
+import LinkedInOAuthTest from './LinkedInOAuthTest'
 
 import toast from 'react-hot-toast'
 
@@ -246,6 +247,9 @@ export default function Dashboard({ user }: DashboardProps) {
 
                                                       {/* LinkedIn Analytics Card */}
                         <LinkedInAnalyticsCard />
+                        
+                        {/* LinkedIn OAuth Debug */}
+                        <LinkedInOAuthTest />
                         
                         {/* Streak Card */}
                         <div className="border rounded-lg p-6 bg-gradient-to-br from-orange-50 to-red-50">
