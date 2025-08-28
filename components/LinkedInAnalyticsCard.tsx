@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Linkedin, TrendingUp, Users, Eye } from 'lucide-react'
+import { Linkedin, TrendingUp, Users, Eye, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -10,74 +10,38 @@ export default function LinkedInAnalyticsCard() {
   const [loading, setLoading] = useState(false)
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
+  const [linkedInProfile, setLinkedInProfile] = useState<any>(null)
 
   useEffect(() => {
     checkLinkedInConnection()
-    handleOAuthCallback()
-  }, [])
-
-  const handleOAuthCallback = async () => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get('code')
-    const provider = urlParams.get('provider')
     
-    if (code && (provider === 'linkedin' || provider === 'google')) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          // Get the provider token (OAuth access token)
-          const accessToken = session.provider_token
-          
-          if (accessToken) {
-            // Store OAuth credentials
-            const response = await fetch('/api/linkedin/auth', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                linkedinAccessToken: accessToken,
-                linkedinId: session.user.user_metadata?.sub || session.user.id,
-                linkedinName: session.user.user_metadata?.name || 'OAuth User',
-                linkedinPicture: session.user.user_metadata?.picture || '',
-                provider: provider
-              })
-            })
-
-            if (response.ok) {
-              setIsConnected(true)
-              setShowAnalytics(true)
-              toast.success(`${provider === 'linkedin' ? 'LinkedIn' : 'Google'} connected successfully!`)
-              // Clean up URL
-              window.history.replaceState({}, document.title, window.location.pathname)
-            } else {
-              toast.error('Failed to store OAuth credentials')
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error handling OAuth callback:', error)
-        toast.error('Failed to connect OAuth provider')
+    // Listen for LinkedIn connection message from popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'LINKEDIN_CONNECTED') {
+        setLinkedInProfile(event.data.profile)
+        setIsConnected(true)
+        setShowAnalytics(true)
+        toast.success('LinkedIn connected successfully!')
       }
     }
-  }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   const checkLinkedInConnection = async () => {
     try {
       setIsChecking(true)
       const { data: { session } } = await supabase.auth.getSession()
       
-      // Debug: Log the user metadata to see what's there
-      console.log('User metadata:', session?.user?.user_metadata)
+      // Check if user has LinkedIn profile data stored
+      const hasLinkedInProfile = session?.user?.user_metadata?.linkedin_profile
+      console.log('Has LinkedIn profile:', !!hasLinkedInProfile)
       
-      // Check for LinkedIn access token or use the provided token
-      const hasLinkedInToken = session?.user?.user_metadata?.linkedin_access_token || true // We have a valid token
-      console.log('Has LinkedIn token:', !!hasLinkedInToken)
-      
-      if (hasLinkedInToken) {
+      if (hasLinkedInProfile) {
         setIsConnected(true)
         setShowAnalytics(true)
+        setLinkedInProfile(hasLinkedInProfile)
       } else {
         setIsConnected(false)
         setShowAnalytics(false)
@@ -94,36 +58,30 @@ export default function LinkedInAnalyticsCard() {
   const connectLinkedIn = async () => {
     setLoading(true)
     try {
-      // Try LinkedIn OAuth first, fallback to Google if LinkedIn is not configured
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'linkedin',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          scopes: 'openid profile email w_member_social'
+      // Open LinkedIn OAuth in a popup window
+      const popup = window.open(
+        'https://www.linkedin.com/oauth/v2/authorization?' +
+        'response_type=code' +
+        '&client_id=YOUR_LINKEDIN_CLIENT_ID' + // You'll need to replace this
+        '&redirect_uri=' + encodeURIComponent(`${window.location.origin}/linkedin-callback`) +
+        '&scope=' + encodeURIComponent('openid profile email w_member_social') +
+        '&state=' + Math.random().toString(36).substring(7),
+        'linkedin-oauth',
+        'width=600,height=600'
+      )
+
+      // Listen for the callback
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed)
+          // Check if connection was successful
+          checkLinkedInConnection()
         }
-      })
-      
-      if (error) {
-        console.log('LinkedIn OAuth failed, trying Google OAuth:', error.message)
-        // Fallback to Google OAuth
-        const { error: googleError } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/dashboard`,
-            scopes: 'openid profile email'
-          }
-        })
-        
-        if (googleError) {
-          toast.error('Failed to connect with Google OAuth')
-        } else {
-          toast.success('Redirecting to Google...')
-        }
-      } else {
-        toast.success('Redirecting to LinkedIn...')
-      }
+      }, 1000)
+
+      toast.success('LinkedIn connection popup opened')
     } catch (error: any) {
-      toast.error(error.message || 'Failed to connect')
+      toast.error(error.message || 'Failed to connect LinkedIn')
     } finally {
       setLoading(false)
     }
@@ -133,13 +91,11 @@ export default function LinkedInAnalyticsCard() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // Remove LinkedIn credentials from user metadata
+        // Remove LinkedIn profile data from user metadata
         const { error } = await supabase.auth.updateUser({
           data: {
-            linkedin_access_token: null,
-            linkedin_id: null,
-            linkedin_name: null,
-            linkedin_picture: null
+            linkedin_profile: null,
+            linkedin_access_token: null
           }
         })
 
@@ -148,6 +104,7 @@ export default function LinkedInAnalyticsCard() {
         } else {
           setIsConnected(false)
           setShowAnalytics(false)
+          setLinkedInProfile(null)
           toast.success('LinkedIn disconnected successfully')
         }
       }
@@ -185,16 +142,16 @@ export default function LinkedInAnalyticsCard() {
         
         <div className="space-y-3">
           <p className="text-sm text-gray-700">
-            LinkedIn is connected and ready for posting! You can now post directly to LinkedIn from this platform.
+            Connect your LinkedIn account to enable direct posting and access your profile information.
           </p>
           
           <button
             onClick={connectLinkedIn}
             disabled={loading}
-            className="w-full bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Linkedin className="w-4 h-4" />
-            {loading ? 'Connecting...' : 'LinkedIn Ready for Posting! ✅'}
+            {loading ? 'Connecting...' : 'Connect LinkedIn Profile'}
           </button>
         </div>
       </div>
@@ -204,29 +161,50 @@ export default function LinkedInAnalyticsCard() {
   // Show analytics when connected
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Linkedin className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">LinkedIn Analytics</h3>
-              <p className="text-sm text-gray-600">Your content performance</p>
-            </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-100 p-2 rounded-lg">
+            <Linkedin className="w-6 h-6 text-blue-600" />
           </div>
-          <div className="flex items-center gap-2">
-            <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-              Connected
-            </div>
-            <button
-              onClick={checkLinkedInConnection}
-              className="text-xs text-gray-500 hover:text-gray-700"
-              title="Refresh connection status"
-            >
-              ↻
-            </button>
+          <div>
+            <h3 className="font-semibold text-gray-900">LinkedIn Profile</h3>
+            <p className="text-sm text-gray-600">Connected and ready for posting</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+            Connected
+          </div>
+          <button
+            onClick={checkLinkedInConnection}
+            className="text-xs text-gray-500 hover:text-gray-700"
+            title="Refresh connection status"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
+
+      {/* LinkedIn Profile Info */}
+      {linkedInProfile && (
+        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <h4 className="font-medium text-gray-900 mb-2">Your LinkedIn Profile</h4>
+          <div className="flex items-center gap-3">
+            {linkedInProfile.picture && (
+              <img 
+                src={linkedInProfile.picture} 
+                alt="LinkedIn Profile" 
+                className="w-12 h-12 rounded-full"
+              />
+            )}
+            <div>
+              <p className="font-medium text-gray-900">{linkedInProfile.name}</p>
+              <p className="text-sm text-gray-600">{linkedInProfile.headline}</p>
+              <p className="text-xs text-gray-500">{linkedInProfile.location}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 rounded-lg p-4">
