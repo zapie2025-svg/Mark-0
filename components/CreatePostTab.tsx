@@ -209,11 +209,8 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         return
       }
 
-      // Check if user is connected (Google OAuth fallback)
-      if (!session.user.user_metadata?.avatar_url) {
-        toast.error('Please connect your account first from the Dashboard')
-        return
-      }
+      // LinkedIn is connected with the provided access token
+      // No additional checks needed
 
       // First save as draft
       await saveAsDraft()
@@ -246,11 +243,8 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
             setTopic('')
             onPostCreated?.()
           } else {
-            // Fallback: simulate LinkedIn posting for demo
-            toast.success('Post published to LinkedIn successfully! (Demo mode)')
-            setGeneratedPost('')
-            setTopic('')
-            onPostCreated?.()
+            const error = await linkedInResponse.json()
+            toast.error(error.error || 'Failed to post to LinkedIn')
           }
         }
       }

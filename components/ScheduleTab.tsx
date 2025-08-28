@@ -141,11 +141,8 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
         return
       }
 
-      // Check if user is connected (Google OAuth fallback)
-      if (!session.user.user_metadata?.avatar_url) {
-        toast.error('Please connect your account first from the Dashboard')
-        return
-      }
+      // LinkedIn is connected with the provided access token
+      // No additional checks needed
 
       const response = await fetch('/api/linkedin/post', {
         method: 'POST',
@@ -162,10 +159,8 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
         fetchPosts()
         onPostUpdated?.()
       } else {
-        // Fallback: simulate LinkedIn posting for demo
-        toast.success('Post published to LinkedIn successfully! (Demo mode)')
-        fetchPosts()
-        onPostUpdated?.()
+        const error = await response.json()
+        toast.error(error.error || 'Failed to post to LinkedIn')
       }
     } catch (error) {
       toast.error('Failed to post to LinkedIn')

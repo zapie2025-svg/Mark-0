@@ -38,26 +38,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    // Get LinkedIn access token from user metadata
-    const linkedInAccessToken = user.user_metadata?.linkedin_access_token
-    if (!linkedInAccessToken) {
-      return NextResponse.json({ error: 'LinkedIn not connected' }, { status: 400 })
+    // Use the provided LinkedIn access token
+    const linkedInAccessToken = 'AQUOs9nHESgBKUW89ZD5OjixIg0oBMaS2rC3jNXd0kGYQ-aFC1p2ARYEs4Ebi5mWIqPR4X1NvUnbfAl8_BM647_Xv9meWwmhuIpyNabUcuvDcYnICoD8NaMJXp0eG6TEgNlw4EpfStFkNF6odbH0JxBuhnBqAJQcCsOk9l89i60mT2pUgs2Om9BxTia9ZdKl98MTbTG9W4Il1sVPL9Od5traNke73_-zkACx0Of9tKQ_IgVUMZWZ2QPlu2n6rKi-cimSgeYQdF-z-edmuPK0bqmGTwlccgbXtcEXGtbci7xll9KIGeOHUmqa5dM50B1ipBWPjEv6vBNSaQ_87Tp_zJvngm_tuA'
+
+    // Get user's LinkedIn profile ID from userinfo endpoint
+    const profileResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${linkedInAccessToken}`,
+      }
+    })
+
+    if (!profileResponse.ok) {
+      return NextResponse.json({ error: 'Failed to get LinkedIn profile' }, { status: 400 })
     }
 
-    // Get user's LinkedIn profile ID
-    const { data: profile } = await supabase
-      .from('linkedin_profiles')
-      .select('linkedin_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!profile?.linkedin_id) {
-      return NextResponse.json({ error: 'LinkedIn profile not found' }, { status: 400 })
-    }
+    const profileData = await profileResponse.json()
+    const linkedInId = profileData.sub
 
     // Prepare the LinkedIn post
     const linkedInPost: any = {
-      author: `urn:li:person:${profile.linkedin_id}`,
+      author: `urn:li:person:${linkedInId}`,
       lifecycleState: 'PUBLISHED',
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             registerUploadRequest: {
               recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
-              owner: `urn:li:person:${profile.linkedin_id}`,
+              owner: `urn:li:person:${linkedInId}`,
               serviceRelationships: [
                 {
                   relationshipType: 'OWNER',
