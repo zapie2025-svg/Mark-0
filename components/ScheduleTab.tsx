@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, Save } from 'lucide-react'
+import { Calendar, Clock, Save, Send } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -102,6 +102,37 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
     }
   }
 
+  const publishPost = async (postId: string) => {
+    try {
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('You must be logged in to publish posts')
+        return
+      }
+
+      const response = await fetch('/api/posts/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to publish post')
+      }
+
+      toast.success('Post published successfully!')
+      fetchPosts()
+      onPostUpdated?.()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to publish post')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -190,7 +221,7 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
           <div className="space-y-4">
             {scheduledPosts.map((post) => (
               <div key={post.id} className="border rounded-lg p-4 bg-blue-50">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Clock className="w-4 h-4 text-blue-600" />
@@ -202,6 +233,16 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
                       {post.content}
                     </div>
                   </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => publishPost(post.id)}
+                    className="btn-primary flex items-center gap-2 text-sm"
+                  >
+                    <Send className="w-4 h-4" />
+                    Ready to Post
+                  </button>
                 </div>
               </div>
             ))}

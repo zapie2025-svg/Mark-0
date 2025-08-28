@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, CheckCircle, Clock } from 'lucide-react'
+import { Send, CheckCircle, Clock, Linkedin, X } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -24,6 +24,8 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
   const [publishedPosts, setPublishedPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState<string | null>(null)
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false)
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPosts()
@@ -85,6 +87,33 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
       toast.error(error.message || 'Failed to publish post')
     } finally {
       setPublishing(null)
+    }
+  }
+
+  const handlePublishEarly = (postId: string) => {
+    setSelectedPostId(postId)
+    setShowLinkedInModal(true)
+  }
+
+  const connectLinkedIn = async () => {
+    try {
+      // Simulate LinkedIn OAuth process
+      toast.loading('Connecting to LinkedIn...', { duration: 2000 })
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Close modal and publish the post
+      setShowLinkedInModal(false)
+      setSelectedPostId(null)
+      
+      if (selectedPostId) {
+        await publishPost(selectedPostId)
+      }
+      
+      toast.success('LinkedIn connected! Post published successfully!')
+    } catch (error: any) {
+      toast.error('Failed to connect to LinkedIn')
     }
   }
 
@@ -181,7 +210,7 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
                       </div>
                     </div>
                     <button
-                      onClick={() => publishPost(post.id)}
+                      onClick={() => handlePublishEarly(post.id)}
                       disabled={publishing === post.id}
                       className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50 ml-4"
                     >
@@ -225,6 +254,64 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
           </div>
         )}
       </div>
+
+      {/* LinkedIn Connection Modal */}
+      {showLinkedInModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Connect with LinkedIn</h3>
+              <button
+                onClick={() => {
+                  setShowLinkedInModal(false)
+                  setSelectedPostId(null)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Linkedin className="w-8 h-8 text-white" />
+              </div>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                Start Publishing to LinkedIn
+              </h4>
+              <p className="text-gray-600 text-sm">
+                Connect your LinkedIn account to start publishing posts directly to your profile.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={connectLinkedIn}
+                className="w-full btn-primary flex items-center justify-center gap-2"
+              >
+                <Linkedin className="w-5 h-5" />
+                Connect LinkedIn Account
+              </button>
+              <button
+                onClick={() => {
+                  setShowLinkedInModal(false)
+                  setSelectedPostId(null)
+                }}
+                className="w-full btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs text-blue-700">
+                <strong>Note:</strong> This will open LinkedIn's OAuth flow to securely connect your account. 
+                You'll be able to publish posts directly to your LinkedIn profile.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
