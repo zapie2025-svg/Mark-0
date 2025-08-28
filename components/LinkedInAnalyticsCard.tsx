@@ -21,15 +21,15 @@ export default function LinkedInAnalyticsCard() {
     const code = urlParams.get('code')
     const provider = urlParams.get('provider')
     
-    if (code && provider === 'linkedin') {
+    if (code && (provider === 'linkedin' || provider === 'google')) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          // Get the provider token (LinkedIn access token)
-          const linkedinAccessToken = session.provider_token
+          // Get the provider token (OAuth access token)
+          const accessToken = session.provider_token
           
-          if (linkedinAccessToken) {
-            // Store LinkedIn credentials
+          if (accessToken) {
+            // Store OAuth credentials
             const response = await fetch('/api/linkedin/auth', {
               method: 'POST',
               headers: {
@@ -37,27 +37,28 @@ export default function LinkedInAnalyticsCard() {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                linkedinAccessToken,
+                linkedinAccessToken: accessToken,
                 linkedinId: session.user.user_metadata?.sub || session.user.id,
-                linkedinName: session.user.user_metadata?.name || 'LinkedIn User',
-                linkedinPicture: session.user.user_metadata?.picture || ''
+                linkedinName: session.user.user_metadata?.name || 'OAuth User',
+                linkedinPicture: session.user.user_metadata?.picture || '',
+                provider: provider
               })
             })
 
             if (response.ok) {
               setIsConnected(true)
               setShowAnalytics(true)
-              toast.success('LinkedIn connected successfully!')
+              toast.success(`${provider === 'linkedin' ? 'LinkedIn' : 'Google'} connected successfully!`)
               // Clean up URL
               window.history.replaceState({}, document.title, window.location.pathname)
             } else {
-              toast.error('Failed to store LinkedIn credentials')
+              toast.error('Failed to store OAuth credentials')
             }
           }
         }
       } catch (error) {
-        console.error('Error handling LinkedIn OAuth callback:', error)
-        toast.error('Failed to connect LinkedIn')
+        console.error('Error handling OAuth callback:', error)
+        toast.error('Failed to connect OAuth provider')
       }
     }
   }
@@ -93,7 +94,7 @@ export default function LinkedInAnalyticsCard() {
   const connectLinkedIn = async () => {
     setLoading(true)
     try {
-      // Use LinkedIn OAuth for real connection
+      // Try LinkedIn OAuth first, fallback to Google if LinkedIn is not configured
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'linkedin',
         options: {
@@ -103,7 +104,21 @@ export default function LinkedInAnalyticsCard() {
       })
       
       if (error) {
-        toast.error('Failed to connect with LinkedIn')
+        console.log('LinkedIn OAuth failed, trying Google OAuth:', error.message)
+        // Fallback to Google OAuth
+        const { error: googleError } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/dashboard`,
+            scopes: 'openid profile email'
+          }
+        })
+        
+        if (googleError) {
+          toast.error('Failed to connect with Google OAuth')
+        } else {
+          toast.success('Redirecting to Google...')
+        }
       } else {
         toast.success('Redirecting to LinkedIn...')
       }
@@ -170,7 +185,7 @@ export default function LinkedInAnalyticsCard() {
         
         <div className="space-y-3">
           <p className="text-sm text-gray-700">
-            Connect your LinkedIn account to enable direct posting and track your content performance.
+            Connect your LinkedIn or Google account to enable direct posting and track your content performance.
           </p>
           
           <button
@@ -179,7 +194,7 @@ export default function LinkedInAnalyticsCard() {
             className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Linkedin className="w-4 h-4" />
-            {loading ? 'Connecting...' : 'Connect LinkedIn'}
+            {loading ? 'Connecting...' : 'Connect LinkedIn/Google'}
           </button>
         </div>
       </div>
