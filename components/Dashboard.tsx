@@ -110,9 +110,23 @@ export default function Dashboard({ user }: DashboardProps) {
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user.email}
-              </span>
+              <div className="flex items-center gap-3">
+                {user.user_metadata?.avatar_url && (
+                  <img 
+                    src={user.user_metadata.avatar_url} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900">
+                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {user.user_metadata?.email || user.email}
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -167,7 +181,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     <>
                       <div>
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                          Hey {user.email?.split('@')[0] || 'there'} 👋🏻
+                          Hey {user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || user.email?.split('@')[0] || 'there'} 👋🏻
                         </h2>
                         <p className="text-gray-600">
                           Welcome back! Here's your LinkedIn posting overview.
