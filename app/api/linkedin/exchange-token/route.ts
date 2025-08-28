@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
       name: `${profileData.given_name} ${profileData.family_name}`,
       email: profileData.email,
       picture: profileData.picture,
-      headline: additionalProfileData.headline || '',
-      location: additionalProfileData.location?.name || '',
+      headline: (additionalProfileData as any)?.headline || '',
+      location: (additionalProfileData as any)?.location?.name || '',
       access_token: access_token
     }
 
