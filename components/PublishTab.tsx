@@ -103,9 +103,9 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
         return
       }
 
-      // Check if user is connected (Google OAuth fallback)
+      // Check if LinkedIn is connected
       if (!session.user.user_metadata?.avatar_url) {
-        toast.error('Please connect your account first from the Dashboard')
+        toast.error('Please connect your LinkedIn account first from the Dashboard')
         return
       }
 
