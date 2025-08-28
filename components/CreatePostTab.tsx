@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Save, Calendar, Send } from 'lucide-react'
+import { Sparkles, Save, Calendar, Send, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 
@@ -16,6 +16,10 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
   const [generatedPost, setGeneratedPost] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [scheduling, setScheduling] = useState(false)
 
   const tones = [
     { value: 'professional', label: 'Professional' },
@@ -132,6 +136,71 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
     }
   }
 
+  const schedulePost = async () => {
+    if (!selectedDate || !selectedTime) {
+      toast.error('Please select both date and time')
+      return
+    }
+
+    const scheduleTime = new Date(`${selectedDate}T${selectedTime}`).toISOString()
+    
+    setScheduling(true)
+    try {
+      // First save as draft
+      await saveAsDraft()
+      
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('You must be logged in to schedule posts')
+        return
+      }
+
+      // Find the most recent draft and schedule it
+      const response = await fetch('/api/posts', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+      
+      if (response.ok) {
+        const posts = await response.json()
+        const latestDraft = posts.find((post: any) => post.status === 'draft')
+        
+        if (latestDraft) {
+          const scheduleResponse = await fetch('/api/posts/schedule', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              postId: latestDraft.id,
+              scheduleTime,
+            }),
+          })
+
+          if (scheduleResponse.ok) {
+            toast.success('Post scheduled successfully!')
+            setShowScheduleModal(false)
+            setSelectedDate('')
+            setSelectedTime('')
+            setGeneratedPost('')
+            setTopic('')
+            onPostCreated?.()
+          } else {
+            throw new Error('Failed to schedule post')
+          }
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to schedule post')
+    } finally {
+      setScheduling(false)
+    }
+  }
+
 
 
   return (
@@ -235,13 +304,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
             </button>
             
             <button
-              onClick={() => {
-                // Save as draft first, then open scheduling
-                saveAsDraft().then(() => {
-                  // After saving, we could redirect to schedule tab or show scheduling modal
-                  toast.success('Draft saved! You can now schedule it from the Draft tab.')
-                })
-              }}
+              onClick={() => setShowScheduleModal(true)}
               disabled={saving}
               className="btn-secondary flex items-center justify-center gap-2 text-sm disabled:opacity-50"
             >
@@ -281,6 +344,82 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
             </button>
 
 
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Modal */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Schedule Post</h3>
+              <button
+                onClick={() => {
+                  setShowScheduleModal(false)
+                  setSelectedDate('')
+                  setSelectedTime('')
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="input-field w-full"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Time
+                </label>
+                <input
+                  type="time"
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                  className="input-field w-full"
+                />
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm text-gray-600 mb-2">Post Preview:</p>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                  {generatedPost}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={schedulePost}
+                disabled={scheduling || !selectedDate || !selectedTime}
+                className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Calendar className="w-4 h-4" />
+                {scheduling ? 'Scheduling...' : 'Schedule Post'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowScheduleModal(false)
+                  setSelectedDate('')
+                  setSelectedTime('')
+                }}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
