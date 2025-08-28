@@ -9,6 +9,7 @@ export default function LinkedInAnalyticsCard() {
   const [isConnected, setIsConnected] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showAnalytics, setShowAnalytics] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
     checkLinkedInConnection()
@@ -63,9 +64,17 @@ export default function LinkedInAnalyticsCard() {
 
   const checkLinkedInConnection = async () => {
     try {
+      setIsChecking(true)
       const { data: { session } } = await supabase.auth.getSession()
-      // Check if user has actually connected LinkedIn (has LinkedIn access token)
-      if (session?.user?.user_metadata?.linkedin_access_token) {
+      
+      // Debug: Log the user metadata to see what's there
+      console.log('User metadata:', session?.user?.user_metadata)
+      
+      // Explicitly check for LinkedIn access token
+      const hasLinkedInToken = session?.user?.user_metadata?.linkedin_access_token
+      console.log('Has LinkedIn token:', !!hasLinkedInToken)
+      
+      if (hasLinkedInToken) {
         setIsConnected(true)
         setShowAnalytics(true)
       } else {
@@ -76,6 +85,8 @@ export default function LinkedInAnalyticsCard() {
       console.error('Error checking LinkedIn connection:', error)
       setIsConnected(false)
       setShowAnalytics(false)
+    } finally {
+      setIsChecking(false)
     }
   }
 
@@ -101,6 +112,45 @@ export default function LinkedInAnalyticsCard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const disconnectLinkedIn = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // Remove LinkedIn credentials from user metadata
+        const { error } = await supabase.auth.updateUser({
+          data: {
+            linkedin_access_token: null,
+            linkedin_id: null,
+            linkedin_name: null,
+            linkedin_picture: null
+          }
+        })
+
+        if (error) {
+          toast.error('Failed to disconnect LinkedIn')
+        } else {
+          setIsConnected(false)
+          setShowAnalytics(false)
+          toast.success('LinkedIn disconnected successfully')
+        }
+      }
+    } catch (error: any) {
+      toast.error('Failed to disconnect LinkedIn')
+    }
+  }
+
+  // Show loading state while checking connection
+  if (isChecking) {
+    return (
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Checking LinkedIn connection...</span>
+        </div>
+      </div>
+    )
   }
 
   if (!isConnected) {
@@ -139,20 +189,29 @@ export default function LinkedInAnalyticsCard() {
   // Show analytics when connected
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <Linkedin className="w-6 h-6 text-blue-600" />
+              <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <Linkedin className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">LinkedIn Analytics</h3>
+              <p className="text-sm text-gray-600">Your content performance</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">LinkedIn Analytics</h3>
-            <p className="text-sm text-gray-600">Your content performance</p>
+          <div className="flex items-center gap-2">
+            <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+              Connected
+            </div>
+            <button
+              onClick={checkLinkedInConnection}
+              className="text-xs text-gray-500 hover:text-gray-700"
+              title="Refresh connection status"
+            >
+              ↻
+            </button>
           </div>
         </div>
-        <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-          Connected
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 rounded-lg p-4">
@@ -193,9 +252,18 @@ export default function LinkedInAnalyticsCard() {
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-sm text-gray-600">
-          Last updated: {new Date().toLocaleDateString()}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Last updated: {new Date().toLocaleDateString()}
+          </p>
+          <button
+            onClick={disconnectLinkedIn}
+            className="text-xs text-red-600 hover:text-red-800"
+            title="Disconnect LinkedIn"
+          >
+            Disconnect
+          </button>
+        </div>
       </div>
     </div>
   )
