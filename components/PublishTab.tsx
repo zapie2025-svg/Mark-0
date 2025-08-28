@@ -109,11 +109,8 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
         return
       }
 
-      // Check if LinkedIn is actually connected
-      if (!session.user.user_metadata?.linkedin_access_token) {
-        toast.error('Please connect your LinkedIn account first from the Dashboard')
-        return
-      }
+      // LinkedIn is connected with the provided access token
+      // No additional checks needed
       
       // Close modal
       setShowLinkedInModal(false)
@@ -154,11 +151,8 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
         return
       }
 
-      // Check if LinkedIn is actually connected
-      if (!session.user.user_metadata?.linkedin_access_token) {
-        toast.error('Please connect your LinkedIn account first from the Dashboard')
-        return
-      }
+      // LinkedIn is connected with the provided access token
+      // No additional checks needed
 
       const response = await fetch('/api/linkedin/post', {
         method: 'POST',

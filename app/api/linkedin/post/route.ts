@@ -38,11 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    // Get LinkedIn access token from user metadata
-    const linkedInAccessToken = user.user_metadata?.linkedin_access_token
-    if (!linkedInAccessToken) {
-      return NextResponse.json({ error: 'LinkedIn not connected' }, { status: 400 })
-    }
+    // Use the provided LinkedIn access token
+    const linkedInAccessToken = 'AQUd8MREWtCZrJBkGQPekaz8qA0eSXZVQqWm_m82QMecWVC94hQTydsPbNTyvJSVZEBCJSOpnGfcLGRj9G2pobNJ9fIZ-E49gMZfg5OsHwzw3goeoQtFZb_vbUSNKnzSh84jUEL-fuQ2SCbR0qkq8uzHDXm7m2ILtspqW7jX4IjFb_C4jd-0obqLEBIgrgp4J_HAvLrmMlre7OUhDs2TGLuZCG8zfIiRKwgnJVDcIBOO17wUwqHy-BHSjWZpdiCuvgzuW0m4eJLzQO2Rhg83I61rm9cigCMsy3m5zgiEVV3a5mAGFtnG6CP8OVlq4UxvZNCa2rTBOjZTMrKJqqbiXR0iWkMDpA'
 
     // Get user's LinkedIn profile ID from userinfo endpoint
     const profileResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
