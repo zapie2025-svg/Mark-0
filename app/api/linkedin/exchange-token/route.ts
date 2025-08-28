@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    let additionalProfileData = {}
+    let additionalProfileData: any = {}
     if (additionalProfileResponse.ok) {
       additionalProfileData = await additionalProfileResponse.json()
     }
