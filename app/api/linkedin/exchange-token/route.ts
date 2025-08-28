@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // LinkedIn OAuth configuration
-    const clientId = process.env.LINKEDIN_CLIENT_ID
+    const clientId = process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET
     const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://mark-0.netlify.app'}/linkedin-callback`
 
