@@ -97,23 +97,46 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
 
   const connectLinkedIn = async () => {
     try {
-      // Simulate LinkedIn OAuth process
-      toast.loading('Connecting to LinkedIn...', { duration: 2000 })
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Close modal and publish the post
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error('Not authenticated')
+        return
+      }
+
+      // Check if LinkedIn is connected
+      if (!session.user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first')
+        return
+      }
+
+      // Close modal
       setShowLinkedInModal(false)
-      setSelectedPostId(null)
       
       if (selectedPostId) {
-        await publishPost(selectedPostId)
+        // Post to LinkedIn
+        const response = await fetch('/api/linkedin/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ postId: selectedPostId, includeMedia: false })
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          toast.success('Post published to LinkedIn successfully!')
+          fetchPosts()
+          onPostUpdated?.()
+        } else {
+          const error = await response.json()
+          toast.error(error.error || 'Failed to post to LinkedIn')
+        }
       }
       
-      toast.success('LinkedIn connected! Post published successfully!')
+      setSelectedPostId(null)
     } catch (error: any) {
-      toast.error('Failed to connect to LinkedIn')
+      toast.error('Failed to post to LinkedIn')
     }
   }
 

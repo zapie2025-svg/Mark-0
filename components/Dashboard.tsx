@@ -7,6 +7,7 @@ import CreatePostTab from './CreatePostTab'
 import ScheduleTab from './ScheduleTab'
 import PublishTab from './PublishTab'
 import DraftTab from './DraftTab'
+import LinkedInAnalyticsCard from './LinkedInAnalyticsCard'
 
 import toast from 'react-hot-toast'
 
@@ -243,8 +244,11 @@ export default function Dashboard({ user }: DashboardProps) {
                         </div>
                       </div>
 
-                              {/* Streak Card */}
-                      <div className="border rounded-lg p-6 bg-gradient-to-br from-orange-50 to-red-50">
+                                                      {/* LinkedIn Analytics Card */}
+                        <LinkedInAnalyticsCard />
+                        
+                        {/* Streak Card */}
+                        <div className="border rounded-lg p-6 bg-gradient-to-br from-orange-50 to-red-50">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
                             <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-full p-3">
