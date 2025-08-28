@@ -209,8 +209,11 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         return
       }
 
-      // LinkedIn is connected with the provided access token
-      // No additional checks needed
+      // Check if LinkedIn is actually connected
+      if (!session.user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first from the Dashboard')
+        return
+      }
 
       // First save as draft
       await saveAsDraft()

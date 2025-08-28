@@ -141,8 +141,11 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
         return
       }
 
-      // LinkedIn is connected with the provided access token
-      // No additional checks needed
+      // Check if LinkedIn is actually connected
+      if (!session.user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first from the Dashboard')
+        return
+      }
 
       const response = await fetch('/api/linkedin/post', {
         method: 'POST',

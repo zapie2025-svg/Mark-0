@@ -93,7 +93,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { linkedinAccessToken, linkedinId, linkedinName, linkedinPicture } = body
 
-    // Update user metadata with LinkedIn access token
+    if (!linkedinAccessToken) {
+      return NextResponse.json({ error: 'LinkedIn access token is required' }, { status: 400 })
+    }
+
+    // Update user metadata with LinkedIn credentials
     const { error: updateError } = await supabase.auth.updateUser({
       data: {
         linkedin_access_token: linkedinAccessToken,
@@ -104,35 +108,17 @@ export async function POST(request: NextRequest) {
     })
 
     if (updateError) {
-      return NextResponse.json({ error: 'Failed to update user profile' }, { status: 400 })
-    }
-
-    // Store LinkedIn profile in database
-    const { error: profileError } = await supabase
-      .from('linkedin_profiles')
-      .upsert({
-        user_id: user.id,
-        linkedin_id: linkedinId,
-        first_name: linkedinName.split(' ')[0],
-        last_name: linkedinName.split(' ').slice(1).join(' '),
-        profile_picture: linkedinPicture,
-        email: user.email,
-        access_token: linkedinAccessToken,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-
-    if (profileError) {
-      console.error('LinkedIn profile storage error:', profileError)
+      console.error('Error updating user metadata:', updateError)
+      return NextResponse.json({ error: 'Failed to store LinkedIn credentials' }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
-      message: 'LinkedIn connected successfully'
+      message: 'LinkedIn credentials stored successfully'
     })
 
   } catch (error: any) {
-    console.error('LinkedIn auth storage error:', error)
+    console.error('LinkedIn auth error:', error)
     return NextResponse.json({
       error: 'Failed to store LinkedIn credentials',
       details: error.message
