@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Save, Calendar, Send, Linkedin } from 'lucide-react'
+import { Sparkles, Save, Calendar, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 
@@ -132,43 +132,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
     }
   }
 
-  const postToLinkedIn = async (postId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        toast.error('Not authenticated')
-        return
-      }
 
-      // Check if LinkedIn is connected
-      if (!session.user.user_metadata?.linkedin_access_token) {
-        toast.error('Please connect your LinkedIn account first')
-        return
-      }
-
-      const response = await fetch('/api/linkedin/post', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ postId, includeMedia: false })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        toast.success('Post published to LinkedIn successfully!')
-        setGeneratedPost('')
-        setTopic('')
-        onPostCreated?.()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to post to LinkedIn')
-      }
-    } catch (error) {
-      toast.error('Failed to post to LinkedIn')
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -316,36 +280,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
               Ready to Post
             </button>
 
-            <button
-              onClick={async () => {
-                // Save as draft first, then post to LinkedIn
-                try {
-                  await saveAsDraft()
-                  // Find the most recent draft and post to LinkedIn
-                  const response = await fetch('/api/posts', {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  })
-                  
-                  if (response.ok) {
-                    const posts = await response.json()
-                    const latestDraft = posts.find((post: any) => post.status === 'draft')
-                    if (latestDraft) {
-                      await postToLinkedIn(latestDraft.id)
-                    }
-                  }
-                } catch (error) {
-                  toast.error('Failed to post to LinkedIn')
-                }
-              }}
-              disabled={saving}
-              className="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-            >
-              <Linkedin className="w-4 h-4" />
-              Post to LinkedIn
-            </button>
+
           </div>
         </div>
       )}
