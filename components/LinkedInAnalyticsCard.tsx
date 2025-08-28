@@ -134,7 +134,7 @@ export default function LinkedInAnalyticsCard() {
               <Linkedin className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-                          <h3 className="font-semibold text-gray-900">Connect LinkedIn</h3>
+                          <h3 className="font-semibold text-gray-900">Connect with LinkedIn</h3>
             <p className="text-sm text-gray-600">Connect your LinkedIn profile for posting</p>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function LinkedInAnalyticsCard() {
             className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Linkedin className="w-4 h-4" />
-            {loading ? 'Connecting...' : 'Connect LinkedIn'}
+            {loading ? 'Connecting...' : 'Connect with LinkedIn'}
           </button>
         </div>
       </div>
