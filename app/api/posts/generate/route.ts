@@ -6,8 +6,12 @@ const openai = new OpenAI({
 })
 
 export async function POST(request: NextRequest) {
+  let topic: string, tone: string
+  
   try {
-    const { topic, tone } = await request.json()
+    const body = await request.json()
+    topic = body.topic
+    tone = body.tone
 
     if (!topic || !tone) {
       return NextResponse.json(
