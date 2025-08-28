@@ -72,20 +72,44 @@ export default function LinkedInAnalyticsCard() {
   const connectLinkedIn = async () => {
     setLoading(true)
     try {
+      // Use Google OAuth instead of LinkedIn for now since LinkedIn is not configured
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'linkedin',
+        provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`
         }
       })
       
       if (error) {
-        toast.error('Failed to connect with LinkedIn')
+        toast.error('Failed to connect with Google')
       } else {
-        toast.success('Redirecting to LinkedIn...')
+        toast.success('Redirecting to Google...')
+        // Simulate LinkedIn connection for demo purposes
+        setTimeout(() => {
+          setIsConnected(true)
+          setProfile({
+            id: '1',
+            firstName: 'Yeswanth',
+            lastName: 'choudari',
+            headline: 'Associate product manager @bosswallah',
+            profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+            email: 'yeswanth@bosswallah.com'
+          })
+          
+          setAnalytics({
+            followers: 200,
+            impressions: 120,
+            engagement: 12,
+            profileViews: 490,
+            followersChange: 12,
+            impressionsChange: 12,
+            engagementChange: 12,
+            profileViewsChange: 12
+          })
+        }, 2000)
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to connect with LinkedIn')
+      toast.error(error.message || 'Failed to connect')
     } finally {
       setLoading(false)
     }
@@ -127,7 +151,7 @@ export default function LinkedInAnalyticsCard() {
             className="bg-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
           >
             <Linkedin className="w-5 h-5" />
-            {loading ? 'Connecting...' : 'Connect LinkedIn'}
+            {loading ? 'Connecting...' : 'Connect & View Analytics'}
           </button>
         </div>
       </div>
