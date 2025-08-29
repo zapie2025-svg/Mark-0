@@ -5,6 +5,10 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Disable the Next.js plugin that's causing issues
+[build.processing]
+  skip_processing = true
+
 # Handle all routes
 [[redirects]]
   from = "/*"
