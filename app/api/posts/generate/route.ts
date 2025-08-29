@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import OpenAI from 'openai'
 
-// Demo post templates for different tones
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 const postTemplates = {
   professional: [
     {
@@ -88,40 +92,63 @@ const topicEnhancements = {
   }
 }
 
-function generatePost(topic: string, tone: string): string {
-  const templates = postTemplates[tone as keyof typeof postTemplates] || postTemplates.professional
-  const template = templates[Math.floor(Math.random() * templates.length)]
-  
-  // Enhance topic with relevant keywords
-  let enhancedTopic = topic
-  const topicLower = topic.toLowerCase()
-  
-  for (const [key, enhancement] of Object.entries(topicEnhancements)) {
-    if (topicLower.includes(key.toLowerCase())) {
-      const keyword = enhancement.keywords[Math.floor(Math.random() * enhancement.keywords.length)]
-      const example = enhancement.examples[Math.floor(Math.random() * enhancement.examples.length)]
-      enhancedTopic = `${topic} (${keyword})`
-      break
-    }
+async function generatePostWithChatGPT(topic: string, tone: string, audience?: string, goals?: string): Promise<string> {
+  const systemPrompt = `You are a LinkedIn content strategist who specializes in helping professionals and businesses grow their influence on LinkedIn. Your role is to create engaging, authentic, and authority-building posts tailored to the user's audience and goals.
+
+Key requirements:
+- Create posts that are optimized for LinkedIn engagement (likes, comments, shares)
+- Use clear hooks to grab attention in the first line
+- Structure content with bullet points, emojis, and scannable format
+- Include strong calls-to-action
+- Keep content authentic and professional
+- Use relevant hashtags (3-5 hashtags)
+- Make posts between 800-1200 characters for optimal LinkedIn performance
+- Focus on providing value and insights
+
+Format the response as a complete LinkedIn post ready to publish.`
+
+  const userPrompt = `Please create a LinkedIn post about "${topic}" with the following specifications:
+
+Tone: ${tone}
+${audience ? `Target Audience: ${audience}` : ''}
+${goals ? `Content Goals: ${goals}` : ''}
+
+Create an engaging, authentic LinkedIn post that will resonate with the audience and achieve the specified goals. Make sure to include:
+- A compelling hook in the first line
+- Valuable insights and actionable takeaways
+- Professional yet engaging tone
+- Relevant hashtags
+- A strong call-to-action
+
+The post should be ready to publish on LinkedIn.`
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
+    })
+
+    return completion.choices[0]?.message?.content || 'Failed to generate post'
+  } catch (error) {
+    console.error('OpenAI API error:', error)
+    throw new Error('Failed to generate post with ChatGPT')
   }
-  
-  // Generate the post
-  let post = template.intro.replace(/{topic}/g, enhancedTopic)
-  post += '\n\n'
-  post += template.body.replace(/{topic}/g, enhancedTopic)
-  post += '\n\n'
-  post += template.hashtags
-  
-  return post
 }
 
 export async function POST(request: NextRequest) {
-  let topic: string = '', tone: string = ''
+  let topic: string = '', tone: string = '', audience: string = '', goals: string = ''
   
   try {
     const body = await request.json()
     topic = body.topic || ''
     tone = body.tone || 'professional'
+    audience = body.audience || ''
+    goals = body.goals || ''
 
     if (!topic) {
       return NextResponse.json(
@@ -130,15 +157,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate post using our demo system
-    const generatedPost = generatePost(topic, tone)
+    // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      )
+    }
+
+    // Generate post using ChatGPT
+    const generatedPost = await generatePostWithChatGPT(topic, tone, audience, goals)
 
     return NextResponse.json({
       content: generatedPost,
       topic,
       tone,
+      audience,
+      goals,
       generated_at: new Date().toISOString(),
-      note: 'Generated using demo system'
+      note: 'Generated using ChatGPT'
     })
 
   } catch (error: any) {
@@ -163,7 +200,8 @@ What's your take on ${topic}? Share your thoughts below!
       topic,
       tone,
       generated_at: new Date().toISOString(),
-      note: 'Generated using fallback system'
+      note: 'Generated using fallback system due to error',
+      error: error.message
     })
   }
 }

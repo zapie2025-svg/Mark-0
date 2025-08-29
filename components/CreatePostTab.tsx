@@ -13,6 +13,8 @@ interface CreatePostTabProps {
 export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProps) {
   const [topic, setTopic] = useState('')
   const [tone, setTone] = useState('professional')
+  const [audience, setAudience] = useState('')
+  const [goals, setGoals] = useState('')
   const [generatedPost, setGeneratedPost] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -42,7 +44,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ topic, tone }),
+        body: JSON.stringify({ topic, tone, audience, goals }),
       })
 
       const data = await response.json()
@@ -96,6 +98,8 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
       toast.success('Draft saved successfully!')
       setGeneratedPost('')
       setTopic('')
+      setAudience('')
+      setGoals('')
       onPostCreated?.()
     } catch (error: any) {
       toast.error(error.message || 'Failed to save draft')
@@ -130,6 +134,8 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
       toast.success('Post published successfully!')
       setGeneratedPost('')
       setTopic('')
+      setAudience('')
+      setGoals('')
       onPostCreated?.()
     } catch (error: any) {
       toast.error(error.message || 'Failed to publish post')
@@ -188,6 +194,8 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
             setSelectedTime('')
             setGeneratedPost('')
             setTopic('')
+            setAudience('')
+            setGoals('')
             onPostCreated?.()
           } else {
             throw new Error('Failed to schedule post')
@@ -241,6 +249,8 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
             toast.success('Post published to LinkedIn successfully!')
             setGeneratedPost('')
             setTopic('')
+            setAudience('')
+            setGoals('')
             onPostCreated?.()
           } else {
             const error = await linkedInResponse.json()
@@ -296,6 +306,34 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label htmlFor="audience" className="block text-sm font-medium text-gray-700 mb-2">
+              Target Audience (Optional)
+            </label>
+            <input
+              id="audience"
+              type="text"
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              placeholder="e.g., 'Tech professionals', 'Small business owners', 'Marketing managers'"
+              className="input-field"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="goals" className="block text-sm font-medium text-gray-700 mb-2">
+              Content Goals (Optional)
+            </label>
+            <input
+              id="goals"
+              type="text"
+              value={goals}
+              onChange={(e) => setGoals(e.target.value)}
+              placeholder="e.g., 'Thought leadership', 'Lead generation', 'Brand awareness'"
+              className="input-field"
+            />
           </div>
 
           <button
