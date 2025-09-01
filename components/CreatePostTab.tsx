@@ -380,87 +380,6 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         </p>
       </div>
 
-      {/* AI-Powered Topic Recommendations */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">AI-Powered Topic Recommendations</h3>
-          </div>
-          <button
-            onClick={generateRecommendations}
-            disabled={loadingRecommendations}
-            className="btn-secondary flex items-center gap-2 text-sm"
-          >
-            <Sparkles className="w-4 h-4" />
-            {loadingRecommendations ? 'Generating...' : 'Get Recommendations'}
-          </button>
-        </div>
-        
-        <p className="text-gray-600 mb-4">
-          Get 10 personalized topic suggestions based on your role, industry, goals, and content preferences to inspire your next LinkedIn post.
-        </p>
-
-        {showRecommendations && recommendations.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {recommendations.map((recommendation) => (
-              <div
-                key={recommendation.id}
-                className="border border-gray-200 rounded-lg p-4 bg-gray-50"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-semibold text-gray-900 text-sm">{recommendation.title}</h4>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => useRecommendation(recommendation.title, recommendation.hashtags)}
-                      className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                    >
-                      Use
-                    </button>
-                    <button
-                      onClick={() => copyToClipboard(recommendation.title, recommendation.hashtags, recommendation.id)}
-                      className="text-gray-600 hover:text-gray-800"
-                    >
-                      {copiedId === recommendation.id ? (
-                        <CheckCircle className="w-3 h-3 text-green-600" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="mb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                      {recommendation.format}
-                    </span>
-                    {recommendation.angle && (
-                      <span className="text-gray-600 text-xs">
-                        {recommendation.angle}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {recommendation.hashtags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {recommendation.hashtags.map((hashtag: string, index: number) => (
-                      <span
-                        key={index}
-                        className="px-1 py-0.5 bg-gray-200 text-gray-700 rounded text-xs"
-                      >
-                        {hashtag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Input Form */}
         <div className="space-y-4">
@@ -613,6 +532,123 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
           </div>
         </div>
       )}
+
+      {/* Recommendation Posts Section */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Recommendation Posts</h3>
+          </div>
+          {user.user_metadata?.linkedin_access_token ? (
+            <button
+              onClick={generateRecommendations}
+              disabled={loadingRecommendations}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              {loadingRecommendations ? 'Generating...' : 'Get Recommendations'}
+            </button>
+          ) : (
+            <button
+              onClick={() => window.open('/linkedin-callback', '_blank')}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Linkedin className="w-4 h-4" />
+              Connect LinkedIn
+            </button>
+          )}
+        </div>
+        
+        {!user.user_metadata?.linkedin_access_token ? (
+          <div className="text-center py-8">
+            <Linkedin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Connect Your LinkedIn Profile</h4>
+            <p className="text-gray-600 mb-4">
+              Connect your LinkedIn account to get personalized post recommendations based on your profile, industry, and network.
+            </p>
+            <button
+              onClick={() => window.open('/linkedin-callback', '_blank')}
+              className="btn-primary flex items-center gap-2 mx-auto"
+            >
+              <Linkedin className="w-4 h-4" />
+              Connect LinkedIn for Better Recommendations
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-gray-600 mb-4">
+              Get 10 personalized topic suggestions based on your LinkedIn profile, role, industry, goals, and content preferences.
+            </p>
+
+            {showRecommendations && recommendations.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recommendations.map((recommendation) => (
+                  <div
+                    key={recommendation.id}
+                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900 text-sm">{recommendation.title}</h4>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => useRecommendation(recommendation.title, recommendation.hashtags)}
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                        >
+                          Use
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(recommendation.title, recommendation.hashtags, recommendation.id)}
+                          className="text-gray-600 hover:text-gray-800"
+                        >
+                          {copiedId === recommendation.id ? (
+                            <CheckCircle className="w-3 h-3 text-green-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                          {recommendation.format}
+                        </span>
+                        {recommendation.angle && (
+                          <span className="text-gray-600 text-xs">
+                            {recommendation.angle}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {recommendation.hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {recommendation.hashtags.map((hashtag: string, index: number) => (
+                          <span
+                            key={index}
+                            className="px-1 py-0.5 bg-gray-200 text-gray-700 rounded text-xs"
+                          >
+                            {hashtag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {showRecommendations && recommendations.length === 0 && (
+              <div className="text-center py-8">
+                <Sparkles className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No recommendations available. Try generating new ones.</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Schedule Modal */}
       {showScheduleModal && (
