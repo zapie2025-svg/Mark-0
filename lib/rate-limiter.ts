@@ -38,11 +38,17 @@ export class RateLimiter {
 
   private cleanup(): void {
     const now = Date.now()
-    for (const [key, value] of rateLimitStore.entries()) {
+    const keysToDelete: string[] = []
+    
+    rateLimitStore.forEach((value, key) => {
       if (now > value.resetTime) {
-        rateLimitStore.delete(key)
+        keysToDelete.push(key)
       }
-    }
+    })
+    
+    keysToDelete.forEach(key => {
+      rateLimitStore.delete(key)
+    })
   }
 
   public check(request: NextRequest): { allowed: boolean; remaining: number; resetTime: number } {

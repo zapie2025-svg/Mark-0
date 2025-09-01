@@ -8,10 +8,18 @@ const openai = new OpenAI({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { headline, industry, firstName, lastName, useSurveyData = false } = body
+    const { 
+      role, 
+      industry, 
+      experience_years, 
+      goal, 
+      content_style,
+      linkedin_profile,
+      useSurveyData = false 
+    } = body
 
-    if (!headline) {
-      return NextResponse.json({ error: 'Headline is required' }, { status: 400 })
+    if (!role) {
+      return NextResponse.json({ error: 'Role is required' }, { status: 400 })
     }
 
     // Check if OpenAI API key is configured
@@ -19,8 +27,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
     }
 
-    // Generate recommendations using ChatGPT
-    const recommendations = await generateRecommendations(headline, industry, firstName, lastName, useSurveyData)
+    // Generate recommendations using the new improved prompt
+    const recommendations = await generateRecommendations({
+      role,
+      industry,
+      experience_years,
+      goal,
+      content_style,
+      linkedin_profile,
+      useSurveyData
+    })
 
     return NextResponse.json({ recommendations })
 
@@ -30,45 +46,89 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateRecommendations(headline: string, industry?: string, firstName?: string, lastName?: string, useSurveyData = false) {
-  const systemPrompt = `You are an expert LinkedIn content strategist and recommendation engine. 
-Given a user's professional information and survey data, your job is to suggest highly personalized LinkedIn post topics. 
+interface RecommendationParams {
+  role: string
+  industry?: string
+  experience_years?: string
+  goal?: string
+  content_style?: string
+  linkedin_profile?: {
+    headline?: string
+    about?: string
+    skills?: string[]
+    recent_posts?: string[]
+  }
+  useSurveyData?: boolean
+}
 
-Your recommendations should:  
-- Be extremely personalized to the user's specific role, experience level, and goals.  
-- Balance between thought leadership, storytelling, industry insights, and personal branding.  
-- Include 6 content topic ideas with suggested angles or formats (e.g., "personal story", "industry insight", "how-to", "trending commentary").  
-- Be specific enough to inspire posts, not generic.  
-- Consider the user's target audience and content preferences.
-- Make each recommendation unique and tailored to their specific situation.
+async function generateRecommendations(params: RecommendationParams) {
+  const {
+    role,
+    industry = 'Professional Services',
+    experience_years = '3-5 years',
+    goal = 'Personal Branding',
+    content_style = 'Tips & Insights',
+    linkedin_profile = {},
+    useSurveyData = false
+  } = params
 
-Always output in a clear, structured format with the following structure for each recommendation:
+  const systemPrompt = `You are an expert LinkedIn content strategist and personal branding coach.
 
-1. [Topic Title]
-   Format: [format type]
-   Angle: [specific angle or approach]
-   Hashtags: [3-5 relevant hashtags]
+Your task is to generate 10 LinkedIn content topic ideas for this user.
 
-Make the content authentic, professional, and highly personalized to their specific circumstances.`
+## Guidelines
+Topics must be **personalized** to the user's role, industry, skills, and experience.
+Topics must align with their **main goal** (e.g., get a job, establish leadership, grow network).
+Each topic should follow their **preferred content style**:
+- Stories (personal journey, failures, lessons)
+- Tips & Insights (actionable advice)
+- Thought Leadership (industry trends, predictions)
+- Case Studies (examples from work/projects)
+- Behind-the-Scenes (daily work, learning process)
 
-  const userPrompt = `Professional Information:
-- Name: ${firstName || 'Professional'} ${lastName || ''}
-- Role/Headline: ${headline}
-- Industry: ${industry || 'Professional services'}
+Topics should **resonate with their target LinkedIn audience** and encourage engagement.
+Topics must be **LinkedIn-friendly**: short, clear, and professional, but also conversational.
+
+For each topic, suggest:
+**Title**: Clear, engaging post title
+**Format**: Story / Insight / Tip / Trend / Case Study
+**Angle**: Recommended approach (e.g., "personal lesson from failure" or "industry trend with unique perspective")
+**Hashtags**: 3–5 relevant hashtags
+
+## Output Format (JSON)
+Return ONLY valid JSON array with exactly 10 recommendations in this format:
+[
+  {
+    "id": "topic-1",
+    "title": "How I transitioned from design to product management in SaaS",
+    "format": "Story",
+    "angle": "Personal career journey with lessons learned",
+    "hashtags": ["#ProductManagement", "#CareerGrowth", "#SaaS"]
+  }
+]
+
+Make each recommendation unique, specific to their situation, and highly actionable.`
+
+  const userPrompt = `## User Context
+Role: ${role}
+Industry: ${industry}
+Years of Experience: ${experience_years}
+Main Goal: ${goal}
+Preferred Content Style: ${content_style}
+
+## LinkedIn Profile
+Headline: ${linkedin_profile.headline || 'Not provided'}
+About: ${linkedin_profile.about || 'Not provided'}
+Skills: ${linkedin_profile.skills ? linkedin_profile.skills.join(', ') : 'Not provided'}
+Recent Posts: ${linkedin_profile.recent_posts ? linkedin_profile.recent_posts.join(' | ') : 'Not provided'}
 
 ${useSurveyData ? `
-Additional Survey Data:
-- Current Role: ${headline}
-- Industry: ${industry}
-- Experience Level: [From survey]
-- Goals: [From survey - personal branding, get job, establish leadership, etc.]
-- Target Audience: [From survey]
-- Content Preferences: [From survey]
+## Additional Context
+This user has completed a detailed survey about their professional goals and content preferences.
+Please use this information to create even more personalized and targeted recommendations.
+` : ''}
 
-Please generate 6 highly personalized LinkedIn post topic recommendations based on this comprehensive information. Make each topic extremely specific to their role, experience level, goals, and target audience. Consider their content preferences and create unique recommendations that would be different even for someone with a similar background but different goals or audience.
-` : `
-Please generate 6 personalized LinkedIn post topic recommendations based on this information. Make each topic specific and actionable.
-`}`
+Generate 10 highly personalized LinkedIn content topic ideas that will help this user achieve their goal of "${goal}" while following their preferred content style of "${content_style}".`
 
   try {
     const completion = await openai.chat.completions.create({
@@ -78,7 +138,7 @@ Please generate 6 personalized LinkedIn post topic recommendations based on this
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7,
-      max_tokens: 1500,
+      max_tokens: 2000,
     })
 
     const response = completion.choices[0]?.message?.content
@@ -87,134 +147,137 @@ Please generate 6 personalized LinkedIn post topic recommendations based on this
       throw new Error('No response from OpenAI')
     }
 
-    // Parse the response and structure it into recommendations
-    const recommendations = parseAIRecommendations(response, headline, industry)
+    // Parse the JSON response
+    const recommendations = parseAIRecommendations(response)
 
     return recommendations
 
   } catch (error) {
     console.error('OpenAI API error:', error)
     // Return fallback recommendations if AI fails
-    return generateFallbackTopicRecommendations(headline, industry)
+    return generateFallbackTopicRecommendations(role, industry, goal, content_style)
   }
 }
 
-function parseAIRecommendations(aiResponse: string, headline: string, industry?: string): any[] {
+function parseAIRecommendations(aiResponse: string): any[] {
   try {
-    const lines = aiResponse.split('\n')
-    const recommendations = []
-    let currentRecommendation: any = {}
-
-    for (const line of lines) {
-      const trimmedLine = line.trim()
-      
-      // Check if this is a numbered topic (1., 2., etc.)
-      const topicMatch = trimmedLine.match(/^\d+\.\s*(.+)/)
-      if (topicMatch) {
-        if (currentRecommendation.title) {
-          recommendations.push(currentRecommendation)
-        }
-        currentRecommendation = {
-          id: `ai-recommendation-${Date.now()}-${Math.random()}`,
-          title: topicMatch[1],
-          format: '',
-          angle: '',
-          hashtags: [],
-          type: 'ai-generated'
-        }
-      } else if (trimmedLine.toLowerCase().startsWith('format:')) {
-        currentRecommendation.format = trimmedLine.replace(/^format:\s*/i, '').trim()
-      } else if (trimmedLine.toLowerCase().startsWith('angle:')) {
-        currentRecommendation.angle = trimmedLine.replace(/^angle:\s*/i, '').trim()
-      } else if (trimmedLine.toLowerCase().startsWith('hashtags:')) {
-        const hashtagText = trimmedLine.replace(/^hashtags:\s*/i, '').trim()
-        const hashtags = hashtagText.match(/#\w+/g) || []
-        currentRecommendation.hashtags = hashtags
-      }
+    // Clean the response to extract JSON
+    let jsonString = aiResponse.trim()
+    
+    // Remove any markdown formatting
+    if (jsonString.startsWith('```json')) {
+      jsonString = jsonString.replace(/```json\n?/, '').replace(/```\n?/, '')
+    } else if (jsonString.startsWith('```')) {
+      jsonString = jsonString.replace(/```\n?/, '').replace(/```\n?/, '')
     }
 
-    // Add the last recommendation
-    if (currentRecommendation.title) {
-      recommendations.push(currentRecommendation)
+    // Parse the JSON
+    const recommendations = JSON.parse(jsonString)
+
+    // Validate the structure
+    if (!Array.isArray(recommendations)) {
+      throw new Error('Response is not an array')
     }
 
-    // If parsing failed, return fallback recommendations
-    if (recommendations.length === 0) {
-      return generateFallbackTopicRecommendations(headline, industry)
+    // Ensure each recommendation has the required fields
+    const validRecommendations = recommendations.filter(rec => 
+      rec.id && rec.title && rec.format && rec.angle && Array.isArray(rec.hashtags)
+    )
+
+    // If parsing failed or no valid recommendations, return fallback
+    if (validRecommendations.length === 0) {
+      throw new Error('No valid recommendations found')
     }
 
-    return recommendations.slice(0, 6) // Ensure we only return up to 6 recommendations
+    return validRecommendations.slice(0, 10) // Ensure we only return up to 10 recommendations
 
   } catch (error) {
     console.error('Error parsing AI response:', error)
-    return generateFallbackTopicRecommendations(headline, industry)
+    console.error('Raw response:', aiResponse)
+    return generateFallbackTopicRecommendations('Professional', 'Professional Services', 'Personal Branding', 'Tips & Insights')
   }
 }
 
-function generateFallbackTopicRecommendations(headline: string, industry?: string): any[] {
+function generateFallbackTopicRecommendations(role: string, industry: string, goal: string, content_style: string): any[] {
   const baseTopics = [
     // Thought Leadership Topics
     {
       id: `thought-leadership-${Date.now()}-1`,
-      type: 'thought-leadership',
-      title: `Key Trends Shaping the ${industry || 'Industry'} in 2024`,
-      description: 'Share your insights on emerging trends and how they impact your field.',
-      hashtags: [`#${industry?.replace(/\s+/g, '') || 'IndustryTrends'}`, '#ThoughtLeadership', '#Innovation']
+      title: `Key Trends Shaping the ${industry} in 2024`,
+      format: 'Thought Leadership',
+      angle: 'Industry trend analysis with personal insights',
+      hashtags: [`#${industry.replace(/\s+/g, '')}`, '#ThoughtLeadership', '#Innovation']
     },
     {
       id: `thought-leadership-${Date.now()}-2`,
-      type: 'thought-leadership',
-      title: `Lessons Learned as a ${headline}`,
-      description: 'Share valuable insights and experiences from your professional journey.',
+      title: `Lessons Learned as a ${role}`,
+      format: 'Story',
+      angle: 'Personal career journey with actionable insights',
       hashtags: ['#LessonsLearned', '#ProfessionalGrowth', '#Leadership']
     },
     
     // Networking Topics
     {
       id: `networking-${Date.now()}-1`,
-      type: 'networking',
-      title: `Connecting with Fellow ${industry || 'Industry'} Professionals`,
-      description: 'Build relationships and expand your network in your field.',
-      hashtags: ['#Networking', '#ProfessionalConnections', `#${industry?.replace(/\s+/g, '') || 'Community'}`]
+      title: `Connecting with Fellow ${industry} Professionals`,
+      format: 'Tips & Insights',
+      angle: 'Practical networking strategies for industry professionals',
+      hashtags: ['#Networking', '#ProfessionalConnections', `#${industry.replace(/\s+/g, '')}`]
     },
     {
       id: `networking-${Date.now()}-2`,
-      type: 'networking',
       title: 'Mentorship and Career Development',
-      description: 'Share experiences about mentorship and helping others grow.',
+      format: 'Story',
+      angle: 'Personal mentorship experiences and lessons',
       hashtags: ['#Mentorship', '#CareerDevelopment', '#ProfessionalGrowth']
     },
     
     // Industry Insight Topics
     {
       id: `industry-insight-${Date.now()}-1`,
-      type: 'industry-insight',
-      title: `Latest Developments in ${industry || 'Your Industry'}`,
-      description: 'Comment on recent news and developments affecting your industry.',
-      hashtags: [`#${industry?.replace(/\s+/g, '') || 'IndustryNews'}`, '#IndustryInsights', '#Trends']
+      title: `Latest Developments in ${industry}`,
+      format: 'Thought Leadership',
+      angle: 'Analysis of recent industry news and developments',
+      hashtags: [`#${industry.replace(/\s+/g, '')}`, '#IndustryInsights', '#Trends']
     },
     {
       id: `industry-insight-${Date.now()}-2`,
-      type: 'industry-insight',
       title: 'Technology Impact on Your Field',
-      description: 'Discuss how new technologies are transforming your industry.',
+      format: 'Case Study',
+      angle: 'Real examples of technology transforming the industry',
       hashtags: ['#Technology', '#Innovation', '#DigitalTransformation']
     },
     
     // Personal Brand Topics
     {
       id: `personal-brand-${Date.now()}-1`,
-      type: 'personal-brand',
-      title: 'My Journey to Becoming a ' + headline,
-      description: 'Share your career story and what led you to your current role.',
+      title: `My Journey to Becoming a ${role}`,
+      format: 'Story',
+      angle: 'Personal career story with key milestones',
       hashtags: ['#CareerJourney', '#PersonalBrand', '#ProfessionalStory']
     },
     {
       id: `personal-brand-${Date.now()}-2`,
-      type: 'personal-brand',
       title: 'Behind the Scenes: A Day in the Life',
-      description: 'Give your network a glimpse into your daily work routine.',
+      format: 'Behind-the-Scenes',
+      angle: 'Authentic glimpse into daily work routine',
       hashtags: ['#DayInTheLife', '#BehindTheScenes', '#WorkLife']
+    },
+    
+    // Skill Development Topics
+    {
+      id: `skill-development-${Date.now()}-1`,
+      title: `Essential Skills for ${role}s in 2024`,
+      format: 'Tips & Insights',
+      angle: 'Actionable advice for skill development',
+      hashtags: ['#SkillDevelopment', '#ProfessionalGrowth', '#CareerAdvice']
+    },
+    {
+      id: `skill-development-${Date.now()}-2`,
+      title: 'How I Stay Updated in My Field',
+      format: 'Tips & Insights',
+      angle: 'Personal learning strategies and resources',
+      hashtags: ['#ContinuousLearning', '#ProfessionalDevelopment', '#IndustryKnowledge']
     }
   ]
 

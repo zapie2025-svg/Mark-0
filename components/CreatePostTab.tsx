@@ -39,27 +39,29 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
   const generateRecommendations = async () => {
     setLoadingRecommendations(true)
     try {
-      // Use basic user information instead of LinkedIn profile
+      // Prepare user information for the new recommendation system
       const userInfo = {
-        firstName: user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || 'Professional',
-        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user.user_metadata?.name?.split(' ').slice(1).join(' ') || '',
-        headline: user.user_metadata?.headline || 'Professional',
-        industry: user.user_metadata?.industry || 'Professional Services'
+        role: user.user_metadata?.headline || user.user_metadata?.role || 'Professional',
+        industry: user.user_metadata?.industry || 'Professional Services',
+        experience_years: user.user_metadata?.experience || '3-5 years',
+        goal: user.user_metadata?.goal || 'Personal Branding',
+        content_style: user.user_metadata?.content_style || 'Tips & Insights',
+        linkedin_profile: {
+          headline: user.user_metadata?.headline || '',
+          about: user.user_metadata?.about || '',
+          skills: user.user_metadata?.skills || [],
+          recent_posts: user.user_metadata?.recent_posts || []
+        },
+        useSurveyData: user.user_metadata?.survey_completed || false
       }
 
-      // Check if user has survey data for more personalized recommendations
-      const hasSurveyData = user.user_metadata?.survey_completed
-
-      // Generate recommendations using basic info
+      // Generate recommendations using the new improved system
       const response = await fetch('/api/posts/recommendations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...userInfo,
-          useSurveyData: hasSurveyData
-        }),
+        body: JSON.stringify(userInfo),
       })
 
       if (!response.ok) {
@@ -396,7 +398,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         </div>
         
         <p className="text-gray-600 mb-4">
-          Get personalized topic suggestions based on your LinkedIn profile to inspire your next post.
+          Get 10 personalized topic suggestions based on your role, industry, goals, and content preferences to inspire your next LinkedIn post.
         </p>
 
         {showRecommendations && recommendations.length > 0 && (
@@ -428,16 +430,18 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
                   </div>
                 </div>
                 
-                {recommendation.format && (
-                  <p className="text-blue-600 text-xs mb-1">
-                    <strong>Format:</strong> {recommendation.format}
-                  </p>
-                )}
-                {recommendation.angle && (
-                  <p className="text-green-600 text-xs mb-2">
-                    <strong>Angle:</strong> {recommendation.angle}
-                  </p>
-                )}
+                <div className="mb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                      {recommendation.format}
+                    </span>
+                    {recommendation.angle && (
+                      <span className="text-gray-600 text-xs">
+                        {recommendation.angle}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 
                 {recommendation.hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
