@@ -61,38 +61,83 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
   const publishPost = async (postId: string) => {
     setPublishing(postId)
     try {
+      // Check if LinkedIn is connected
+      if (!user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first')
+        setPublishing(null)
+        return
+      }
+
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
         toast.error('You must be logged in to publish posts')
+        setPublishing(null)
         return
       }
 
-      const response = await fetch('/api/posts/publish', {
+      // Post directly to LinkedIn
+      const response = await fetch('/api/linkedin/post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ postId }),
+        body: JSON.stringify({ postId, includeMedia: false }),
       })
 
-      if (!response.ok) throw new Error('Failed to publish post')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to post to LinkedIn')
+      }
 
-      toast.success('Post published successfully!')
+      toast.success('Post published to LinkedIn successfully!')
       fetchPosts()
       onPostUpdated?.()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to publish post')
+      toast.error(error.message || 'Failed to post to LinkedIn')
     } finally {
       setPublishing(null)
     }
   }
 
-  const handlePublishEarly = (postId: string) => {
-    setSelectedPostId(postId)
-    setShowLinkedInModal(true)
+  const handlePublishEarly = async (postId: string) => {
+    try {
+      // Check if LinkedIn is connected
+      if (!user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first')
+        return
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error('Not authenticated')
+        return
+      }
+
+      // Post directly to LinkedIn
+      const response = await fetch('/api/linkedin/post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ postId, includeMedia: false })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success('Post published to LinkedIn successfully!')
+        fetchPosts()
+        onPostUpdated?.()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to post to LinkedIn')
+      }
+    } catch (error) {
+      toast.error('Failed to post to LinkedIn')
+    }
   }
 
   const connectLinkedIn = async () => {
@@ -145,14 +190,17 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
 
   const postToLinkedIn = async (postId: string) => {
     try {
+      // Check if LinkedIn is connected
+      if (!user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first')
+        return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         toast.error('Not authenticated')
         return
       }
-
-      // LinkedIn is connected with the provided access token
-      // No additional checks needed
 
       const response = await fetch('/api/linkedin/post', {
         method: 'POST',
@@ -234,8 +282,8 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
                         disabled={publishing === post.id}
                         className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50"
                       >
-                        <Send className="w-4 h-4" />
-                        {publishing === post.id ? 'Publishing...' : 'Publish Now'}
+                        <Linkedin className="w-4 h-4" />
+                        {publishing === post.id ? 'Publishing...' : 'Post in LinkedIn'}
                       </button>
                       <button
                         onClick={() => postToLinkedIn(post.id)}
@@ -283,8 +331,8 @@ export default function PublishTab({ user, onPostUpdated }: PublishTabProps) {
                       disabled={publishing === post.id}
                       className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50 ml-4"
                     >
-                      <Send className="w-4 h-4" />
-                      {publishing === post.id ? 'Publishing...' : 'Publish Early'}
+                      <Linkedin className="w-4 h-4" />
+                      {publishing === post.id ? 'Publishing...' : 'Post in LinkedIn'}
                     </button>
                   </div>
                 </div>

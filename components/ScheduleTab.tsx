@@ -271,18 +271,11 @@ export default function ScheduleTab({ user, onPostUpdated }: ScheduleTabProps) {
                 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => publishPost(post.id)}
+                    onClick={() => postToLinkedIn(post.id)}
                     className="btn-primary flex items-center gap-2 text-sm"
                   >
-                    <Send className="w-4 h-4" />
-                    Ready to Post
-                  </button>
-                  <button
-                    onClick={() => postToLinkedIn(post.id)}
-                    className="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 text-sm"
-                  >
                     <Linkedin className="w-4 h-4" />
-                    Post to LinkedIn
+                    Post in LinkedIn
                   </button>
                 </div>
               </div>

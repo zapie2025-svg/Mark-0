@@ -34,14 +34,47 @@ export default function LinkedInAnalyticsCard() {
       setIsChecking(true)
       const { data: { session } } = await supabase.auth.getSession()
       
-      // Check if user has LinkedIn profile data stored
-      const hasLinkedInProfile = session?.user?.user_metadata?.linkedin_profile
-      console.log('Has LinkedIn profile:', !!hasLinkedInProfile)
+      // Check if user has LinkedIn access token
+      const hasLinkedInToken = session?.user?.user_metadata?.linkedin_access_token
+      console.log('Has LinkedIn token:', !!hasLinkedInToken)
       
-      if (hasLinkedInProfile) {
+      if (hasLinkedInToken) {
         setIsConnected(true)
         setShowAnalytics(true)
-        setLinkedInProfile(hasLinkedInProfile)
+        
+        // Try to fetch LinkedIn profile data
+        try {
+          const response = await fetch(`/api/linkedin/profile?access_token=${encodeURIComponent(hasLinkedInToken)}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+
+          if (response.ok) {
+            const linkedInData = await response.json()
+            setLinkedInProfile(linkedInData)
+          } else {
+            // Fallback to user metadata if LinkedIn API fails
+            const profileData = {
+              name: session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || 'LinkedIn User',
+              headline: session?.user?.user_metadata?.headline || '',
+              picture: session?.user?.user_metadata?.avatar_url || '',
+              location: session?.user?.user_metadata?.location || ''
+            }
+            setLinkedInProfile(profileData)
+          }
+        } catch (linkedInError) {
+          console.log('LinkedIn profile fetch failed, using fallback:', linkedInError)
+          // Fallback to user metadata
+          const profileData = {
+            name: session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || 'LinkedIn User',
+            headline: session?.user?.user_metadata?.headline || '',
+            picture: session?.user?.user_metadata?.avatar_url || '',
+            location: session?.user?.user_metadata?.location || ''
+          }
+          setLinkedInProfile(profileData)
+        }
       } else {
         setIsConnected(false)
         setShowAnalytics(false)
@@ -91,10 +124,9 @@ export default function LinkedInAnalyticsCard() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // Remove LinkedIn profile data from user metadata
+        // Remove LinkedIn access token from user metadata
         const { error } = await supabase.auth.updateUser({
           data: {
-            linkedin_profile: null,
             linkedin_access_token: null
           }
         })
@@ -190,17 +222,23 @@ export default function LinkedInAnalyticsCard() {
         <div className="bg-gray-50 rounded-lg p-4 mb-4">
           <h4 className="font-medium text-gray-900 mb-2">Your LinkedIn Profile</h4>
           <div className="flex items-center gap-3">
-            {linkedInProfile.picture && (
+            {(linkedInProfile.picture || linkedInProfile.profilePicture) && (
               <img 
-                src={linkedInProfile.picture} 
+                src={linkedInProfile.picture || linkedInProfile.profilePicture} 
                 alt="LinkedIn Profile" 
                 className="w-12 h-12 rounded-full"
               />
             )}
             <div>
-              <p className="font-medium text-gray-900">{linkedInProfile.name}</p>
-              <p className="text-sm text-gray-600">{linkedInProfile.headline}</p>
-              <p className="text-xs text-gray-500">{linkedInProfile.location}</p>
+              <p className="font-medium text-gray-900">
+                {linkedInProfile.name || linkedInProfile.firstName + ' ' + linkedInProfile.lastName || 'LinkedIn User'}
+              </p>
+              <p className="text-sm text-gray-600">
+                {linkedInProfile.headline || linkedInProfile.title || ''}
+              </p>
+              <p className="text-xs text-gray-500">
+                {linkedInProfile.location || linkedInProfile.industry || ''}
+              </p>
             </div>
           </div>
         </div>

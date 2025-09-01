@@ -3,37 +3,35 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import AuthPage from '@/components/AuthPage'
 
-export default function Home() {
+export default function SignupPage() {
   const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
-    // Get initial session and redirect accordingly
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+      setSession(session)
       setLoading(false)
       
+      // If user is already authenticated, redirect to dashboard
       if (session) {
-        // User is authenticated, redirect to dashboard
         router.push('/dashboard')
-      } else {
-        // User is not authenticated, redirect to signup
-        router.push('/signup')
       }
     }).catch((error: any) => {
       console.error('Session check error:', error)
       setLoading(false)
-      router.push('/signup')
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+      setSession(session)
       if (session) {
         router.push('/dashboard')
-      } else {
-        router.push('/signup')
       }
     })
 
@@ -48,6 +46,11 @@ export default function Home() {
     )
   }
 
-  // This should never render as we redirect immediately
-  return null
+  // If user is authenticated, don't render anything (will redirect)
+  if (session) {
+    return null
+  }
+
+  return <AuthPage />
 }
+

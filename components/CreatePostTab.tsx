@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Sparkles, Save, Calendar, Send, X, Linkedin } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Sparkles, Save, Calendar, Send, X, Linkedin, Lightbulb, Copy, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 
@@ -22,6 +22,11 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [scheduling, setScheduling] = useState(false)
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
+  const [showRecommendations, setShowRecommendations] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [addWatermark, setAddWatermark] = useState(true)
 
   const tones = [
     { value: 'professional', label: 'Professional' },
@@ -30,6 +35,94 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
     { value: 'thoughtful', label: 'Thoughtful' },
     { value: 'humorous', label: 'Humorous' },
   ]
+
+  const generateRecommendations = async () => {
+    setLoadingRecommendations(true)
+    try {
+      // Use basic user information instead of LinkedIn profile
+      const userInfo = {
+        firstName: user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0] || 'Professional',
+        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user.user_metadata?.name?.split(' ').slice(1).join(' ') || '',
+        headline: user.user_metadata?.headline || 'Professional',
+        industry: user.user_metadata?.industry || 'Professional Services'
+      }
+
+      // Check if user has survey data for more personalized recommendations
+      const hasSurveyData = user.user_metadata?.survey_completed
+
+      // Generate recommendations using basic info
+      const response = await fetch('/api/posts/recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...userInfo,
+          useSurveyData: hasSurveyData
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate recommendations')
+      }
+
+      const data = await response.json()
+      setRecommendations(data.recommendations)
+      setShowRecommendations(true)
+      toast.success('Recommendations generated!')
+
+    } catch (error) {
+      console.error('Error generating recommendations:', error)
+      toast.error('Failed to generate recommendations')
+    } finally {
+      setLoadingRecommendations(false)
+    }
+  }
+
+  const copyToClipboard = async (title: string, hashtags: string[], id: string) => {
+    try {
+      const content = `${title}\n\n${hashtags.join(' ')}`
+      await navigator.clipboard.writeText(content)
+      setCopiedId(id)
+      toast.success('Topic copied to clipboard!')
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (error) {
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
+  const addWatermarkToContent = (content: string): string => {
+    if (!addWatermark) return content
+    
+    // Add watermark at the end of the content
+    const watermark = '\n\nPosted by Mark-0'
+    return content + watermark
+  }
+
+  const removeWatermarkFromContent = (content: string): string => {
+    // Remove watermark if it exists
+    return content.replace(/\n\nPosted by Mark-0$/, '')
+  }
+
+  // Update content when watermark setting changes
+  useEffect(() => {
+    if (generatedPost) {
+      const contentWithoutWatermark = removeWatermarkFromContent(generatedPost)
+      if (addWatermark) {
+        setGeneratedPost(addWatermarkToContent(contentWithoutWatermark))
+      } else {
+        setGeneratedPost(contentWithoutWatermark)
+      }
+    }
+  }, [addWatermark])
+
+  const useRecommendation = (title: string, hashtags: string[]) => {
+    setTopic(title)
+    const content = `${title}\n\n${hashtags.join(' ')}`
+    setGeneratedPost(addWatermarkToContent(content))
+    setShowRecommendations(false)
+    toast.success('Topic applied to post generator!')
+  }
 
   const generatePost = async () => {
     if (!topic.trim()) {
@@ -53,7 +146,9 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         throw new Error(data.error || 'Failed to generate post')
       }
 
-      setGeneratedPost(data.content)
+      // Apply watermark to generated content
+      const contentWithWatermark = addWatermarkToContent(data.content)
+      setGeneratedPost(contentWithWatermark)
       toast.success('Post generated successfully!')
     } catch (error: any) {
       console.error('Generate post error:', error)
@@ -86,7 +181,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          content: generatedPost,
+          content: generatedPost, // Content already has watermark if enabled
           status: 'draft',
         }),
       })
@@ -148,6 +243,12 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
       return
     }
 
+    // Check if LinkedIn is connected
+    if (!user.user_metadata?.linkedin_access_token) {
+      toast.error('Please connect your LinkedIn account first to schedule posts')
+      return
+    }
+
     const scheduleTime = new Date(`${selectedDate}T${selectedTime}`).toISOString()
     
     setScheduling(true)
@@ -188,7 +289,7 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
           })
 
           if (scheduleResponse.ok) {
-            toast.success('Post scheduled successfully!')
+            toast.success('Post scheduled successfully! It will be published to LinkedIn at the scheduled time.')
             setShowScheduleModal(false)
             setSelectedDate('')
             setSelectedTime('')
@@ -211,14 +312,17 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
 
   const postToLinkedIn = async () => {
     try {
+      // Check if LinkedIn is connected
+      if (!user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first')
+        return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         toast.error('Not authenticated')
         return
       }
-
-      // LinkedIn is connected with the provided access token
-      // No additional checks needed
 
       // First save as draft
       await saveAsDraft()
@@ -272,6 +376,85 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
         <p className="text-gray-600">
           Generate LinkedIn posts with AI assistance based on your topic and preferred tone.
         </p>
+      </div>
+
+      {/* AI-Powered Topic Recommendations */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">AI-Powered Topic Recommendations</h3>
+          </div>
+          <button
+            onClick={generateRecommendations}
+            disabled={loadingRecommendations}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Sparkles className="w-4 h-4" />
+            {loadingRecommendations ? 'Generating...' : 'Get Recommendations'}
+          </button>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          Get personalized topic suggestions based on your LinkedIn profile to inspire your next post.
+        </p>
+
+        {showRecommendations && recommendations.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recommendations.map((recommendation) => (
+              <div
+                key={recommendation.id}
+                className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-gray-900 text-sm">{recommendation.title}</h4>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => useRecommendation(recommendation.title, recommendation.hashtags)}
+                      className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                    >
+                      Use
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(recommendation.title, recommendation.hashtags, recommendation.id)}
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      {copiedId === recommendation.id ? (
+                        <CheckCircle className="w-3 h-3 text-green-600" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                {recommendation.format && (
+                  <p className="text-blue-600 text-xs mb-1">
+                    <strong>Format:</strong> {recommendation.format}
+                  </p>
+                )}
+                {recommendation.angle && (
+                  <p className="text-green-600 text-xs mb-2">
+                    <strong>Angle:</strong> {recommendation.angle}
+                  </p>
+                )}
+                
+                {recommendation.hashtags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {recommendation.hashtags.map((hashtag: string, index: number) => (
+                      <span
+                        key={index}
+                        className="px-1 py-0.5 bg-gray-200 text-gray-700 rounded text-xs"
+                      >
+                        {hashtag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -334,6 +517,19 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
               placeholder="e.g., 'Thought leadership', 'Lead generation', 'Brand awareness'"
               className="input-field"
             />
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <input
+              id="watermark"
+              type="checkbox"
+              checked={addWatermark}
+              onChange={(e) => setAddWatermark(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="watermark" className="text-sm font-medium text-blue-900">
+              Add "Posted by Mark-0" watermark to generated content
+            </label>
           </div>
 
           <button
@@ -403,45 +599,13 @@ export default function CreatePostTab({ user, onPostCreated }: CreatePostTabProp
             </button>
             
             <button
-              onClick={async () => {
-                // Save as draft first, then publish immediately
-                try {
-                  await saveAsDraft()
-                  // Find the most recent draft and publish it
-                  const response = await fetch('/api/posts', {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  })
-                  
-                  if (response.ok) {
-                    const posts = await response.json()
-                    const latestDraft = posts.find((post: any) => post.status === 'draft')
-                    if (latestDraft) {
-                      await publishPost(latestDraft.id)
-                    }
-                  }
-                } catch (error) {
-                  toast.error('Failed to publish post')
-                }
-              }}
-              disabled={saving}
-              className="btn-primary flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              Ready to Post
-            </button>
-
-            <button
               onClick={postToLinkedIn}
               disabled={saving}
-              className="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+              className="btn-primary flex items-center justify-center gap-2 text-sm disabled:opacity-50"
             >
               <Linkedin className="w-4 h-4" />
               Post to LinkedIn
             </button>
-
           </div>
         </div>
       )}

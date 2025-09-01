@@ -38,6 +38,7 @@ This guide will help you set up LinkedIn OAuth for profile connection and postin
 2. **Add Redirect URLs**:
    - In "Redirect URLs" section, add:
    ```
+  
    https://mark-0.netlify.app/linkedin-callback
    ```
 

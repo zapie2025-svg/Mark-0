@@ -96,6 +96,12 @@ export default function DraftTab({ user, onPostUpdated }: DraftTabProps) {
 
   const publishPost = async (postId: string) => {
     try {
+      // Check if LinkedIn is connected
+      if (!user.user_metadata?.linkedin_access_token) {
+        toast.error('Please connect your LinkedIn account first')
+        return
+      }
+
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -104,24 +110,29 @@ export default function DraftTab({ user, onPostUpdated }: DraftTabProps) {
         return
       }
 
-      const response = await fetch('/api/posts/publish', {
+      // Post directly to LinkedIn
+      const response = await fetch('/api/linkedin/post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ postId }),
+        body: JSON.stringify({ 
+          postId,
+          includeMedia: false 
+        }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to publish post')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to post to LinkedIn')
       }
 
-      toast.success('Post published successfully!')
+      toast.success('Post published to LinkedIn successfully!')
       fetchDrafts()
       onPostUpdated?.()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to publish post')
+      toast.error(error.message || 'Failed to post to LinkedIn')
     }
   }
 
@@ -204,7 +215,7 @@ export default function DraftTab({ user, onPostUpdated }: DraftTabProps) {
                   className="btn-primary flex items-center gap-2 text-sm"
                 >
                   <Send className="w-4 h-4" />
-                  Publish Now
+                  Post in LinkedIn
                 </button>
                 <button
                   onClick={() => deleteDraft(draft.id)}

@@ -2,17 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { LogOut, Plus, Calendar, Send, BarChart3, TrendingUp, Users, Eye, Flame, Edit } from 'lucide-react'
+import { LogOut, Plus, Calendar, Send, BarChart3, TrendingUp, Users, Eye, Flame, Edit, User, Activity } from 'lucide-react'
 import CreatePostTab from './CreatePostTab'
 import ScheduleTab from './ScheduleTab'
 import PublishTab from './PublishTab'
 import DraftTab from './DraftTab'
 import LinkedInAnalyticsCard from './LinkedInAnalyticsCard'
+import ProfileAnalysisTab from './ProfileAnalysisTab'
+import OnboardingSurvey from './OnboardingSurvey'
 import Logo from './Logo'
+import MonitoringDashboard from './MonitoringDashboard'
 
 import toast from 'react-hot-toast'
 
-type TabType = 'dashboard' | 'create' | 'draft' | 'schedule' | 'publish'
+type TabType = 'dashboard' | 'create' | 'draft' | 'schedule' | 'publish' | 'profile-analysis' | 'monitoring'
 
 interface DashboardProps {
   user: any
@@ -38,11 +41,53 @@ export default function Dashboard({ user }: DashboardProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [userStreak, setUserStreak] = useState<UserStreak | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [surveyCompleted, setSurveyCompleted] = useState(false)
 
   // Fetch user data
   useEffect(() => {
     fetchUserData()
+    checkOnboardingStatus()
   }, [])
+
+  const checkOnboardingStatus = async () => {
+    try {
+      // Check if user has completed the survey
+      const hasSurveyCompleted = user.user_metadata?.survey_completed
+      const hasLinkedInConnected = user.user_metadata?.linkedin_access_token
+      
+      // Show onboarding if no LinkedIn connected and no survey completed
+      if (!hasLinkedInConnected && !hasSurveyCompleted) {
+        setShowOnboarding(true)
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error)
+    }
+  }
+
+  const handleSurveyComplete = async (surveyData: any) => {
+    try {
+      // Save survey data
+      const response = await fetch('/api/user/survey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(surveyData),
+      })
+
+      if (response.ok) {
+        setSurveyCompleted(true)
+        setShowOnboarding(false)
+        toast.success('Welcome to Mark.0! Your profile has been personalized.')
+      } else {
+        toast.error('Failed to save survey data')
+      }
+    } catch (error) {
+      console.error('Error saving survey data:', error)
+      toast.error('Failed to save survey data')
+    }
+  }
 
   const fetchUserData = async () => {
     try {
@@ -96,13 +141,22 @@ export default function Dashboard({ user }: DashboardProps) {
   const tabs = [
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart3 },
     { id: 'create' as TabType, label: 'Create Post', icon: Plus },
+    { id: 'profile-analysis' as TabType, label: 'Profile Analysis', icon: User },
     { id: 'draft' as TabType, label: 'Draft', icon: Edit },
     { id: 'schedule' as TabType, label: 'Schedule', icon: Calendar },
     { id: 'publish' as TabType, label: 'Publish', icon: Send },
+    { id: 'monitoring' as TabType, label: 'System Monitor', icon: Activity },
   ]
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Onboarding Survey */}
+      <OnboardingSurvey
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleSurveyComplete}
+      />
+      
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -110,31 +164,22 @@ export default function Dashboard({ user }: DashboardProps) {
             <div className="flex items-center">
               <Logo size="md" />
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                {user.user_metadata?.avatar_url && (
-                  <img 
-                    src={user.user_metadata.avatar_url} 
-                    alt="Profile" 
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
-                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {user.user_metadata?.email || user.email}
-                  </div>
+            <div className="flex items-center gap-3">
+              {user.user_metadata?.avatar_url && (
+                <img 
+                  src={user.user_metadata.avatar_url} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+              <div className="text-right">
+                <div className="text-sm font-medium text-gray-900">
+                  {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {user.user_metadata?.email || user.email}
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
             </div>
           </div>
         </div>
@@ -144,8 +189,8 @@ export default function Dashboard({ user }: DashboardProps) {
         <div className="flex gap-8">
           {/* Sidebar */}
           <div className="w-64 flex-shrink-0">
-            <nav className="bg-white rounded-lg shadow-sm p-4">
-              <ul className="space-y-2">
+            <nav className="bg-white rounded-lg shadow-sm p-4 flex flex-col h-fit">
+              <ul className="space-y-2 flex-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   return (
@@ -165,6 +210,17 @@ export default function Dashboard({ user }: DashboardProps) {
                   )
                 })}
               </ul>
+              
+              {/* Logout Button */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Logout
+                </button>
+              </div>
             </nav>
           </div>
 
@@ -468,6 +524,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 </div>
                               )}
                 {activeTab === 'create' && <CreatePostTab user={user} onPostCreated={refreshDashboard} />}
+                {activeTab === 'profile-analysis' && <ProfileAnalysisTab user={user} />}
                 {activeTab === 'draft' && <DraftTab user={user} onPostUpdated={refreshDashboard} />}
                 {activeTab === 'schedule' && <ScheduleTab user={user} onPostUpdated={refreshDashboard} />}
                 {activeTab === 'publish' && <PublishTab user={user} onPostUpdated={refreshDashboard} />}

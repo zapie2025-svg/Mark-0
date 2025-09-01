@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { withRateLimit, rateLimiters } from '@/lib/rate-limiter'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -54,7 +55,7 @@ The post should be ready to publish on LinkedIn.`
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(rateLimiters.postGeneration)(async (request: NextRequest) => {
   let topic: string = '', tone: string = '', audience: string = '', goals: string = ''
   
   try {
@@ -118,4 +119,4 @@ What's your take on ${topic}? Share your thoughts below!
       error: error.message
     })
   }
-}
+})

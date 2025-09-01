@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
+import { withRateLimit, rateLimiters } from '@/lib/rate-limiter'
 
 interface LinkedInPostRequest {
   postId: string
   includeMedia?: boolean
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(rateLimiters.linkedin)(async (request: NextRequest) => {
   try {
     // Get authorization header
     const authHeader = request.headers.get('Authorization')
@@ -191,4 +192,4 @@ export async function POST(request: NextRequest) {
       details: error.message
     }, { status: 500 })
   }
-}
+})
