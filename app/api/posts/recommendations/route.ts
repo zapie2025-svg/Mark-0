@@ -74,11 +74,30 @@ async function generateRecommendations(params: RecommendationParams) {
 
   const systemPrompt = `You are an expert LinkedIn content strategist and personal branding coach.
 
-Your task is to generate 10 LinkedIn content topic ideas for this user.
+Your task is to generate 10 LinkedIn content topic ideas for this user with a specific focus on their role.
 
-## Guidelines
-Topics must be **personalized** to the user's role, industry, skills, and experience.
-Topics must align with their **main goal** (e.g., get a job, establish leadership, grow network).
+## CRITICAL WEIGHTING REQUIREMENTS
+**80% of recommendations (8 out of 10) MUST be primarily focused on the user's specific role and responsibilities.**
+**20% of recommendations (2 out of 10) can be based on other factors like industry trends, personal branding, or general professional development.**
+
+## Role-Based Focus Guidelines (80% - 8 recommendations)
+- Topics should directly relate to the user's specific job title and daily responsibilities
+- Focus on challenges, insights, and experiences specific to their role
+- Include role-specific tools, methodologies, and best practices
+- Address common problems and solutions in their field
+- Share role-specific career advice and growth strategies
+- Discuss role-specific industry trends and developments
+- Include role-specific networking and collaboration topics
+- Address role-specific skill development and learning
+
+## Other Factors (20% - 2 recommendations)
+- Industry-wide trends and developments
+- General professional development and career growth
+- Personal branding and thought leadership
+- Work-life balance and productivity
+- Cross-functional collaboration and networking
+
+## Content Style Guidelines
 Each topic should follow their **preferred content style**:
 - Stories (personal journey, failures, lessons)
 - Tips & Insights (actionable advice)
@@ -107,10 +126,10 @@ Return ONLY valid JSON array with exactly 10 recommendations in this format:
   }
 ]
 
-Make each recommendation unique, specific to their situation, and highly actionable.`
+IMPORTANT: Ensure 8 out of 10 recommendations are heavily focused on the user's specific role and responsibilities.`
 
   const userPrompt = `## User Context
-Role: ${role}
+**PRIMARY FOCUS - Role**: ${role}
 Industry: ${industry}
 Years of Experience: ${experience_years}
 Main Goal: ${goal}
@@ -128,7 +147,12 @@ This user has completed a detailed survey about their professional goals and con
 Please use this information to create even more personalized and targeted recommendations.
 ` : ''}
 
-Generate 10 highly personalized LinkedIn content topic ideas that will help this user achieve their goal of "${goal}" while following their preferred content style of "${content_style}".`
+## CRITICAL INSTRUCTIONS
+Generate 10 LinkedIn content topic ideas with the following distribution:
+- **8 recommendations (80%)**: Heavily focused on the user's specific role as "${role}" - their daily responsibilities, challenges, tools, methodologies, and role-specific insights
+- **2 recommendations (20%)**: Based on other factors like industry trends, general professional development, or personal branding
+
+Focus on creating role-specific content that demonstrates expertise and provides value to others in similar roles.`
 
   try {
     const completion = await openai.chat.completions.create({
@@ -200,84 +224,78 @@ function parseAIRecommendations(aiResponse: string): any[] {
 
 function generateFallbackTopicRecommendations(role: string, industry: string, goal: string, content_style: string): any[] {
   const baseTopics = [
-    // Thought Leadership Topics
+    // ROLE-BASED TOPICS (80% - 8 recommendations)
     {
-      id: `thought-leadership-${Date.now()}-1`,
-      title: `Key Trends Shaping the ${industry} in 2024`,
-      format: 'Thought Leadership',
-      angle: 'Industry trend analysis with personal insights',
-      hashtags: [`#${industry.replace(/\s+/g, '')}`, '#ThoughtLeadership', '#Innovation']
-    },
-    {
-      id: `thought-leadership-${Date.now()}-2`,
-      title: `Lessons Learned as a ${role}`,
+      id: `role-specific-${Date.now()}-1`,
+      title: `Daily Challenges I Face as a ${role}`,
       format: 'Story',
-      angle: 'Personal career journey with actionable insights',
-      hashtags: ['#LessonsLearned', '#ProfessionalGrowth', '#Leadership']
+      angle: 'Real challenges and how I overcome them',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#ProfessionalChallenges', '#ProblemSolving']
     },
-    
-    // Networking Topics
     {
-      id: `networking-${Date.now()}-1`,
-      title: `Connecting with Fellow ${industry} Professionals`,
+      id: `role-specific-${Date.now()}-2`,
+      title: `Essential Tools Every ${role} Should Know`,
       format: 'Tips & Insights',
-      angle: 'Practical networking strategies for industry professionals',
-      hashtags: ['#Networking', '#ProfessionalConnections', `#${industry.replace(/\s+/g, '')}`]
+      angle: 'Role-specific tools and their benefits',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#Tools', '#Productivity']
     },
     {
-      id: `networking-${Date.now()}-2`,
-      title: 'Mentorship and Career Development',
+      id: `role-specific-${Date.now()}-3`,
+      title: `How I Improved My ${role} Skills This Year`,
       format: 'Story',
-      angle: 'Personal mentorship experiences and lessons',
-      hashtags: ['#Mentorship', '#CareerDevelopment', '#ProfessionalGrowth']
+      angle: 'Personal skill development journey',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#SkillDevelopment', '#Growth']
     },
-    
-    // Industry Insight Topics
     {
-      id: `industry-insight-${Date.now()}-1`,
-      title: `Latest Developments in ${industry}`,
+      id: `role-specific-${Date.now()}-4`,
+      title: `Common Mistakes New ${role}s Make`,
+      format: 'Tips & Insights',
+      angle: 'Lessons learned from experience',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#CareerAdvice', '#LessonsLearned']
+    },
+    {
+      id: `role-specific-${Date.now()}-5`,
+      title: `The Future of ${role} in ${industry}`,
       format: 'Thought Leadership',
-      angle: 'Analysis of recent industry news and developments',
-      hashtags: [`#${industry.replace(/\s+/g, '')}`, '#IndustryInsights', '#Trends']
+      angle: 'Role-specific industry predictions',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#FutureOfWork', '#IndustryTrends']
     },
     {
-      id: `industry-insight-${Date.now()}-2`,
-      title: 'Technology Impact on Your Field',
-      format: 'Case Study',
-      angle: 'Real examples of technology transforming the industry',
-      hashtags: ['#Technology', '#Innovation', '#DigitalTransformation']
-    },
-    
-    // Personal Brand Topics
-    {
-      id: `personal-brand-${Date.now()}-1`,
-      title: `My Journey to Becoming a ${role}`,
-      format: 'Story',
-      angle: 'Personal career story with key milestones',
-      hashtags: ['#CareerJourney', '#PersonalBrand', '#ProfessionalStory']
-    },
-    {
-      id: `personal-brand-${Date.now()}-2`,
-      title: 'Behind the Scenes: A Day in the Life',
+      id: `role-specific-${Date.now()}-6`,
+      title: `Behind the Scenes: A Typical Day as a ${role}`,
       format: 'Behind-the-Scenes',
-      angle: 'Authentic glimpse into daily work routine',
-      hashtags: ['#DayInTheLife', '#BehindTheScenes', '#WorkLife']
+      angle: 'Authentic daily routine and responsibilities',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#DayInTheLife', '#WorkLife']
+    },
+    {
+      id: `role-specific-${Date.now()}-7`,
+      title: `Key Metrics I Track as a ${role}`,
+      format: 'Case Study',
+      angle: 'Role-specific performance indicators',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#Metrics', '#Performance']
+    },
+    {
+      id: `role-specific-${Date.now()}-8`,
+      title: `Networking Tips for ${role}s`,
+      format: 'Tips & Insights',
+      angle: 'Role-specific networking strategies',
+      hashtags: [`#${role.replace(/\s+/g, '')}`, '#Networking', '#ProfessionalGrowth']
     },
     
-    // Skill Development Topics
+    // OTHER FACTORS (20% - 2 recommendations)
     {
-      id: `skill-development-${Date.now()}-1`,
-      title: `Essential Skills for ${role}s in 2024`,
-      format: 'Tips & Insights',
-      angle: 'Actionable advice for skill development',
-      hashtags: ['#SkillDevelopment', '#ProfessionalGrowth', '#CareerAdvice']
+      id: `general-${Date.now()}-1`,
+      title: `Industry Trends That Will Impact ${industry} in 2024`,
+      format: 'Thought Leadership',
+      angle: 'Broader industry analysis and predictions',
+      hashtags: [`#${industry.replace(/\s+/g, '')}`, '#IndustryTrends', '#Innovation']
     },
     {
-      id: `skill-development-${Date.now()}-2`,
-      title: 'How I Stay Updated in My Field',
+      id: `general-${Date.now()}-2`,
+      title: 'Building Your Personal Brand in the Digital Age',
       format: 'Tips & Insights',
-      angle: 'Personal learning strategies and resources',
-      hashtags: ['#ContinuousLearning', '#ProfessionalDevelopment', '#IndustryKnowledge']
+      angle: 'General personal branding strategies',
+      hashtags: ['#PersonalBrand', '#DigitalMarketing', '#ProfessionalGrowth']
     }
   ]
 
