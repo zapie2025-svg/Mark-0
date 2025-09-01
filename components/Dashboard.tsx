@@ -11,11 +11,11 @@ import LinkedInAnalyticsCard from './LinkedInAnalyticsCard'
 import ProfileAnalysisTab from './ProfileAnalysisTab'
 import OnboardingSurvey from './OnboardingSurvey'
 import Logo from './Logo'
-import MonitoringDashboard from './MonitoringDashboard'
+
 
 import toast from 'react-hot-toast'
 
-type TabType = 'dashboard' | 'create' | 'draft' | 'schedule' | 'publish' | 'profile-analysis' | 'monitoring'
+type TabType = 'dashboard' | 'create' | 'draft' | 'schedule' | 'publish' | 'profile-analysis'
 
 interface DashboardProps {
   user: any
@@ -145,7 +145,6 @@ export default function Dashboard({ user }: DashboardProps) {
     { id: 'draft' as TabType, label: 'Draft', icon: Edit },
     { id: 'schedule' as TabType, label: 'Schedule', icon: Calendar },
     { id: 'publish' as TabType, label: 'Publish', icon: Send },
-    { id: 'monitoring' as TabType, label: 'System Monitor', icon: Activity },
   ]
 
   return (
